@@ -22,13 +22,16 @@ The app is served at `http://localhost:8080`.
 
 After killing a running server, wait ~2 s before rebuilding because Maven's `clean` will fail if the JAR is still locked by the Java process.
 
-## Python dependency
+## Python dependencies
 
-The transcript fetcher is a Python subprocess. The library must be installed for the exact executable configured in `application.properties`:
+Two Python scripts are used as subprocesses. Both libraries must be installed for the exact executable configured in `application.properties`:
 
 ```
 C:\Python314\python.exe -m pip install youtube-transcript-api
+C:\Python314\python.exe -m pip install deepmultilingualpunctuation
 ```
+
+`deepmultilingualpunctuation` downloads the `oliverguhr/fullstop-punctuation-multilang-large` model (~680 MB) from Hugging Face on the first run. Subsequent runs load from the local cache (`~/.cache/huggingface`). If the library is not installed, the punctuation step is silently skipped.
 
 `app.transcript.python` must be an **absolute path** — `ProcessBuilder` does not inherit the full shell PATH, so `python` alone will resolve to the wrong executable (the Windows Store stub).
 
@@ -63,7 +66,7 @@ YouTube's `tlang` parameter (which would have YouTube do the translation server-
 ```
 src/main/java/com/dualsub/
   controller/VideoController.java     REST endpoints (/api/process, /api/debug/*)
-  service/YouTubeTranscriptService.java   transcript fetch + merge pipeline
+  service/YouTubeTranscriptService.java   transcript fetch + merge + punctuation pipeline
   service/TranslationService.java         Google Translate chunking + retry
   model/                                  SubtitleEntry, ProcessRequest, ProcessResponse
 
@@ -74,7 +77,8 @@ src/main/resources/
   application.properties
 
 scripts/
-  get_transcript.py   Python script called by fetchViaYtdlp(); outputs JSON array to stdout
+  get_transcript.py   called by fetchViaYtdlp(); fetches raw ASR fragments via youtube-transcript-api
+  punctuate.py        called by addPunctuation(); restores punctuation using deepmultilingualpunctuation
 ```
 
 ### Debug endpoints

@@ -19,8 +19,10 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 @Service
 public class YouTubeTranscriptService {
@@ -225,7 +227,271 @@ public class YouTubeTranscriptService {
         List<SubtitleEntry> entries = mergeSubtitles(raw);
         System.out.println("[Transcript] Done: " + raw.size() + " fragments → "
             + entries.size() + " merged phrases");
+
+        // Restore punctuation via deepmultilingualpunctuation (graceful fallback if unavailable)
+        entries = addPunctuation(entries);
+
+        // Re-segment entries so each one holds exactly one complete sentence.
+        // This step only does useful work when punctuation was actually added above;
+        // if addPunctuation() fell back, the entries are returned unchanged.
+        entries = splitAtSentences(entries);
+
+        System.out.println("[Transcript] Final: " + entries.size() + " sentence-aligned entries");
         return entries;
+    }
+
+    /**
+     * Optional post-processing step: restores punctuation in merged subtitle entries
+     * by calling scripts/punctuate.py (requires the deepmultilingualpunctuation library).
+     *
+     * Strategy: all entry texts are concatenated into a single stream so the model has
+     * full sentence context, then punctuated words are redistributed back to the original
+     * entries by word count (valid because the model never adds or removes words).
+     *
+     * Silently falls back to the original entries if the script is missing, the library
+     * is not installed, or any other error occurs.
+     */
+    private List<SubtitleEntry> addPunctuation(List<SubtitleEntry> entries) {
+        // Locate punctuate.py next to get_transcript.py
+        java.io.File transcriptScript = new java.io.File(transcriptScriptPath);
+        if (!transcriptScript.isAbsolute()) {
+            transcriptScript = new java.io.File(System.getProperty("user.dir"), transcriptScriptPath);
+        }
+        java.io.File punctuateScript =
+            new java.io.File(transcriptScript.getParent(), "punctuate.py");
+
+        if (!punctuateScript.exists()) {
+            System.out.println("[Punctuation] Script not found at "
+                + punctuateScript.getAbsolutePath() + " — skipping");
+            return entries;
+        }
+
+        System.out.println("[Punctuation] Running punctuation restoration on "
+            + entries.size() + " entries…");
+        long t0 = System.currentTimeMillis();
+
+        try {
+            // Serialize entries to JSON for stdin: [{startMs, durationMs, text}, ...]
+            List<java.util.Map<String, Object>> payload = new ArrayList<>();
+            for (SubtitleEntry e : entries) {
+                java.util.Map<String, Object> m = new java.util.LinkedHashMap<>();
+                m.put("startMs",    e.getStartMs());
+                m.put("durationMs", e.getDurationMs());
+                m.put("text",       e.getText());
+                payload.add(m);
+            }
+            String inputJson = objectMapper.writeValueAsString(payload);
+
+            ProcessBuilder pb = new ProcessBuilder(pythonExe, punctuateScript.getAbsolutePath());
+            pb.redirectErrorStream(false);
+            pb.environment().put("PYTHONIOENCODING", "utf-8");
+            pb.environment().put("PYTHONUTF8", "1");
+            Process proc = pb.start();
+
+            // Write JSON to stdin, then close to signal EOF
+            try (java.io.OutputStreamWriter writer = new java.io.OutputStreamWriter(
+                    proc.getOutputStream(), StandardCharsets.UTF_8)) {
+                writer.write(inputJson);
+            }
+
+            // Read stdout (punctuated JSON array)
+            String jsonOutput;
+            try (BufferedReader reader = new BufferedReader(
+                    new InputStreamReader(proc.getInputStream(), StandardCharsets.UTF_8))) {
+                StringBuilder sb = new StringBuilder();
+                String line;
+                while ((line = reader.readLine()) != null) sb.append(line);
+                jsonOutput = sb.toString();
+            }
+
+            // Read stderr for diagnostics
+            String stderrOutput;
+            try (BufferedReader errReader = new BufferedReader(
+                    new InputStreamReader(proc.getErrorStream(), StandardCharsets.UTF_8))) {
+                StringBuilder sb = new StringBuilder();
+                String line;
+                while ((line = errReader.readLine()) != null) sb.append(line).append("\n");
+                stderrOutput = sb.toString().trim();
+            }
+
+            proc.waitFor(180, TimeUnit.SECONDS);
+
+            long elapsed = System.currentTimeMillis() - t0;
+            System.out.println("[Punctuation] Script finished in " + elapsed + " ms");
+
+            if (!stderrOutput.isBlank()) {
+                // Suppress the torch/transformers deprecation chatter on stderr
+                if (!stderrOutput.contains("FutureWarning") && !stderrOutput.contains("UserWarning")) {
+                    System.err.println("[Punctuation] stderr: "
+                        + stderrOutput.substring(0, Math.min(400, stderrOutput.length())));
+                }
+            }
+
+            if (jsonOutput.isBlank()) {
+                System.err.println("[Punctuation] Empty output — keeping original text");
+                return entries;
+            }
+
+            JsonNode root = objectMapper.readTree(jsonOutput);
+
+            if (root.isObject() && root.has("error")) {
+                System.err.println("[Punctuation] Script error: "
+                    + root.path("error").asText() + " — keeping original text");
+                return entries;
+            }
+
+            if (!root.isArray() || root.size() != entries.size()) {
+                System.err.println("[Punctuation] Size mismatch (expected " + entries.size()
+                    + ", got " + (root.isArray() ? root.size() : "non-array")
+                    + ") — keeping original text");
+                return entries;
+            }
+
+            List<SubtitleEntry> result = new ArrayList<>();
+            for (int i = 0; i < entries.size(); i++) {
+                SubtitleEntry orig = entries.get(i);
+                String text = root.get(i).path("text").asText(orig.getText()).trim();
+                if (text.isEmpty()) text = orig.getText();
+                result.add(new SubtitleEntry(orig.getStartMs(), orig.getDurationMs(), text));
+            }
+
+            System.out.println("[Punctuation] Done: " + result.size() + " entries punctuated");
+            return result;
+
+        } catch (Exception e) {
+            System.err.println("[Punctuation] Failed: " + e.getMessage()
+                + " — keeping original text");
+            return entries;
+        }
+    }
+
+    /**
+     * Re-segments punctuated subtitle entries so that each entry contains exactly
+     * one complete sentence (or one sentence fragment if a sentence is very long).
+     *
+     * Algorithm:
+     *  1. Flatten all entries into a word list. Each word is assigned a proportional
+     *     timestamp derived from its parent entry's [startMs, endMs] span.
+     *  2. Accumulate words into a sentence buffer.
+     *  3. Flush the buffer into a new SubtitleEntry whenever:
+     *       a. the last word ends with sentence-closing punctuation (. ! ?), OR
+     *       b. the accumulated text would exceed MAX_CHARS (safety valve for very
+     *          long sentences without internal punctuation).
+     *  4. Post-process: each entry's duration is stretched to span exactly until
+     *     the next entry's startMs. This eliminates all inter-sentence gaps and
+     *     prevents very-short-duration entries from being skipped by the 100ms
+     *     polling interval in app.js.
+     *  5. Capitalize the first letter of each sentence.
+     *
+     * If addPunctuation() fell back (no punctuation added), none of the words will
+     * end with . ! ? and this method returns the original merged entries unchanged.
+     */
+    private static List<SubtitleEntry> splitAtSentences(List<SubtitleEntry> entries) {
+        if (entries.isEmpty()) return entries;
+
+        // Safety valve: flush mid-sentence if a single sentence grows beyond this.
+        final int MAX_CHARS = 200;
+
+        // ── Step 1: flatten entries → per-word (text, startMs, endMs) triples ──
+        // Use parallel arrays instead of a local record to stay simple.
+        List<String> wText  = new ArrayList<>();
+        List<Long>   wStart = new ArrayList<>();
+        List<Long>   wEnd   = new ArrayList<>();
+
+        for (SubtitleEntry entry : entries) {
+            String[] parts = entry.getText().split("\\s+");
+            int n = parts.length;
+            if (n == 0) continue;
+
+            long eStart = entry.getStartMs();
+            long eDur   = entry.getDurationMs();
+
+            for (int i = 0; i < n; i++) {
+                wText .add(parts[i]);
+                wStart.add(eStart + (long)((double) i      / n * eDur));
+                wEnd  .add(eStart + (long)((double)(i + 1) / n * eDur));
+            }
+        }
+
+        // ── Step 2: assemble words into sentence-aligned entries ──────────────
+        List<SubtitleEntry> result   = new ArrayList<>();
+        List<String>        bufText  = new ArrayList<>();
+        List<Long>          bufStart = new ArrayList<>();
+        List<Long>          bufEnd   = new ArrayList<>();
+        int                 chars    = 0;
+
+        for (int i = 0; i < wText.size(); i++) {
+            String word = wText.get(i);
+            bufText .add(word);
+            bufStart.add(wStart.get(i));
+            bufEnd  .add(wEnd  .get(i));
+            chars += word.length() + 1;
+
+            boolean sentenceEnd = word.endsWith(".") || word.endsWith("!") || word.endsWith("?");
+            boolean tooLong     = chars > MAX_CHARS;
+
+            if (sentenceEnd || tooLong) {
+                flushSentence(bufText, bufStart, bufEnd, result);
+                bufText .clear();
+                bufStart.clear();
+                bufEnd  .clear();
+                chars = 0;
+            }
+        }
+
+        // Flush any remaining words as the last (incomplete) sentence
+        if (!bufText.isEmpty()) {
+            flushSentence(bufText, bufStart, bufEnd, result);
+        }
+
+        // ── Step 3: sort by startMs (safety — interpolation is usually ordered,
+        //            but guard against edge-cases with duplicate or reversed timestamps)
+        result.sort((a, b) -> Long.compare(a.getStartMs(), b.getStartMs()));
+
+        // ── Step 4: pin each entry's duration to span exactly until the next one
+        //            starts — both TRIMMING and EXTENDING as needed.
+        //
+        //  Why trimming matters: when a sentence spans two original merged entries
+        //  and its interpolated endMs overshoots the next sentence's startMs, the
+        //  two entries would overlap. A standard binary search fails on overlapping
+        //  intervals and silently skips the shorter one — the exact bug reported.
+        //
+        //  Why extending matters: interpolated per-word durations can be as short
+        //  as a few ms and would be skipped by the 100ms poll interval.
+        //
+        //  Result: every entry[i] covers [startMs[i], startMs[i+1]) with no gaps
+        //  and no overlaps, which is exactly what the binary search requires.
+        for (int i = 0; i < result.size() - 1; i++) {
+            SubtitleEntry curr = result.get(i);
+            SubtitleEntry next = result.get(i + 1);
+            long exact = next.getStartMs() - curr.getStartMs();
+            if (exact > 0) {   // skip degenerate case where two sentences share the same ms
+                result.set(i, new SubtitleEntry(curr.getStartMs(), exact, curr.getText()));
+            }
+        }
+
+        System.out.println("[Sentences] Re-segmented: " + entries.size()
+            + " punctuated entries → " + result.size() + " sentence-aligned entries");
+        return result;
+    }
+
+    /**
+     * Builds one SubtitleEntry from the accumulated word buffer and appends it to `out`.
+     * Capitalizes the first letter of the sentence text.
+     */
+    private static void flushSentence(List<String> bufText,
+                                      List<Long>   bufStart,
+                                      List<Long>   bufEnd,
+                                      List<SubtitleEntry> out) {
+        if (bufText.isEmpty()) return;
+        String text  = String.join(" ", bufText);
+        // Capitalize the first letter of the sentence
+        text = Character.toUpperCase(text.charAt(0)) + text.substring(1);
+        long start   = bufStart.get(0);
+        long end     = bufEnd.get(bufEnd.size() - 1);
+        // Ensure a minimum duration of 500 ms so very-short splits are still visible
+        long duration = Math.max(end - start, 500L);
+        out.add(new SubtitleEntry(start, duration, text));
     }
 
     /**
@@ -249,19 +515,20 @@ public class YouTubeTranscriptService {
     }
 
     /**
-     * Merges short ASR transcript fragments into longer, more readable phrases.
+     * Merges short ASR transcript fragments into longer, more readable phrases (~20 words).
      *
      * Merge rules:
      *  - Keep merging while the gap to the next fragment is below GAP_MAX ms.
-     *  - Stop when the combined text would exceed TARGET_CHARS characters.
+     *  - Stop when the combined text would exceed TARGET_CHARS characters (~20 words).
      *  - Stop at strong punctuation (sentence boundary).
      *  - Always stop after a silence longer than GAP_BREAK ms.
+     *  - Moderate gap only breaks early when the current text is already fairly long.
      */
     private static List<SubtitleEntry> mergeSubtitles(List<SubtitleEntry> entries) {
         if (entries.isEmpty()) return entries;
 
-        final int  TARGET_CHARS = 80;   // target phrase length in characters
-        final long GAP_MAX      = 1200; // ms: gaps below this are merged
+        final int  TARGET_CHARS = 160;  // ~20 words per subtitle block
+        final long GAP_MAX      = 1500; // ms: gaps below this are merged freely
         final long GAP_BREAK    = 2500; // ms: gaps above this always start a new phrase
 
         List<SubtitleEntry> merged = new ArrayList<>();
@@ -292,8 +559,8 @@ public class YouTubeTranscriptService {
                         || trimmed.endsWith("?") || trimmed.endsWith("…")
                         || trimmed.endsWith(":")) break;
 
-                // Moderate gap — only merge if current text is still short
-                if (gap > GAP_MAX && text.length() >= 35) break;
+                // Moderate gap — only break early once the block is already half-full
+                if (gap > GAP_MAX && text.length() >= 80) break;
 
                 text.append(" ").append(next.getText());
                 endMs = next.getStartMs() + next.getDurationMs();

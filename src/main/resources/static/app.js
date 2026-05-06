@@ -159,19 +159,24 @@ function syncSubtitles() {
     document.getElementById('hudTime').textContent = formatMs(nowMs);
 }
 
-/* Recherche binaire dans un tableau trié par startMs */
+/* Binary search in a startMs-sorted array.
+   Strategy: find the last entry whose startMs ≤ nowMs, then verify nowMs
+   is still within its duration window.  This is more resilient than a strict
+   interval search: if two entries accidentally overlap (timing edge-case),
+   the most recently started one is preferred, and skipping is avoided. */
 function find(list, nowMs) {
     if (!list || list.length === 0) return '';
 
-    let lo = 0, hi = list.length - 1;
+    let lo = 0, hi = list.length - 1, best = -1;
     while (lo <= hi) {
         const mid = (lo + hi) >> 1;
-        const s   = list[mid];
-        if      (nowMs < s.startMs)                  hi = mid - 1;
-        else if (nowMs >= s.startMs + s.durationMs)  lo = mid + 1;
-        else                                          return s.text;
+        if (list[mid].startMs <= nowMs) { best = mid; lo = mid + 1; }
+        else                            { hi = mid - 1; }
     }
-    return '';
+
+    if (best === -1) return '';                          // before first subtitle
+    const s = list[best];
+    return nowMs < s.startMs + s.durationMs ? s.text : '';
 }
 
 function formatMs(ms) {
