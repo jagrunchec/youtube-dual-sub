@@ -1,0 +1,8 @@
+com\dualsub\controller\VideoController.class
+com\dualsub\service\TranslationService.class
+com\dualsub\DualSubApplication.class
+com\dualsub\service\YouTubeTranscriptService$DiagInfo.class
+com\dualsub\model\SubtitleEntry.class
+com\dualsub\service\YouTubeTranscriptService.class
+com\dualsub\model\ProcessRequest.class
+com\dualsub\model\ProcessResponse.class
