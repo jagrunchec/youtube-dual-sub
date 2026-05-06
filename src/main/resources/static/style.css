@@ -606,6 +606,90 @@ body {
 }
 
 /* ══════════════════════════════════════════════════════════════
+   IMMERSION MODE CHECKBOX
+   ══════════════════════════════════════════════════════════════ */
+.imm-block { padding-top: 0; padding-bottom: 0; }
+
+.imm-label {
+    display:     flex;
+    align-items: center;
+    gap:         1rem;
+    cursor:      pointer;
+    padding:     .75rem 1rem;
+    border:      1px solid rgba(0,212,255,.1);
+    border-radius: 6px;
+    transition:  border-color .25s, background .25s;
+    user-select: none;
+}
+.imm-label:hover {
+    border-color: rgba(0,212,255,.25);
+    background:   rgba(0,212,255,.04);
+}
+
+/* Hide the native checkbox */
+.imm-label input[type="checkbox"] { display: none; }
+
+/* Custom checkbox box */
+.imm-box {
+    flex-shrink: 0;
+    width:  20px;
+    height: 20px;
+    border: 1px solid var(--txt-dim);
+    border-radius: 3px;
+    position: relative;
+    transition: border-color .2s, background .2s, box-shadow .2s;
+}
+/* Checked state */
+.imm-label input:checked ~ .imm-box {
+    border-color: var(--cyan);
+    background:   rgba(0,212,255,.15);
+    box-shadow:   0 0 8px rgba(0,212,255,.4);
+}
+.imm-label input:checked ~ .imm-box::after {
+    content:  '✓';
+    position: absolute;
+    inset:    0;
+    display:  flex;
+    align-items:     center;
+    justify-content: center;
+    font-size:  .75rem;
+    font-weight: 700;
+    color: var(--cyan);
+}
+
+/* Text */
+.imm-text {
+    display:        flex;
+    flex-direction: column;
+    gap:            .15rem;
+}
+.imm-main {
+    font-family:    'Orbitron', monospace;
+    font-size:      .72rem;
+    font-weight:    600;
+    letter-spacing: .12em;
+    color:          var(--txt-dim);
+    transition:     color .2s;
+}
+.imm-hint {
+    font-family:    'Exo 2', sans-serif;
+    font-size:      .72rem;
+    color:          #3a4a5a;
+    letter-spacing: .04em;
+    transition:     color .2s;
+}
+.imm-label input:checked ~ .imm-box + .imm-text .imm-main { color: var(--cyan); }
+.imm-label input:checked ~ .imm-box + .imm-text .imm-hint  { color: #5a8a9a;   }
+
+/* Locked state: both lang slots dimmed & non-interactive */
+.imm-locked {
+    opacity:        .35;
+    pointer-events: none;
+    filter:         grayscale(.6);
+    transition:     opacity .3s, filter .3s;
+}
+
+/* ══════════════════════════════════════════════════════════════
    PROGRESS PANEL (SSE pipeline stepper)
    ══════════════════════════════════════════════════════════════ */
 .progress-panel {

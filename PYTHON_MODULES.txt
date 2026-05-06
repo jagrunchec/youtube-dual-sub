@@ -1,0 +1,129 @@
+================================================================================
+PYTHON MODULES USED BY DUALSUB
+================================================================================
+
+DualSub relies on two Python scripts invoked as subprocesses by Spring Boot.
+Each script corresponds to one stage of the transcript processing pipeline:
+
+  1. scripts/get_transcript.py   ->  youtube-transcript-api
+  2. scripts/punctuate.py        ->  transformers  (oliverguhr model)
+
+--------------------------------------------------------------------------------
+1. youtube-transcript-api
+--------------------------------------------------------------------------------
+
+Installation:
+  C:\Python314\python.exe -m pip install youtube-transcript-api
+
+Role in the application:
+  Fetch the raw transcript of a YouTube video in its original language, as an
+  array of ASR (automatic speech recognition) fragments with timestamps. The
+  script also returns the detected language code (e.g. "de", "en") so that
+  Immersion mode can display track 1 without translation.
+
+How it works:
+  YouTube exposes its subtitles via a "timedtext" endpoint and an internal API
+  called InnerTube. Direct HTTP requests from a server consistently return a
+  429 error (rate-limit) or an empty body (silent TLS fingerprint blocking).
+  The library works around this by impersonating the Android VR client, which
+  receives less restrictive treatment from YouTube's servers.
+
+Strengths:
+  - Reliability: the only method that works consistently server-side.
+  - Multilingual: returns subtitles in the video's original language without
+    needing to specify the language in advance.
+  - Automatic preference: prioritises the auto-generated (ASR) transcript,
+    available for the vast majority of videos, and falls back to a manual
+    transcript if no ASR exists.
+  - Language code: exposes the BCP-47 code of the selected transcript, used
+    by Immersion mode.
+
+Current limitations:
+  - YouTube-dependent: if YouTube modifies its InnerTube API or changes its
+    anti-bot mechanism, the library may stop working until an update is released.
+  - No subtitles, no transcript: videos with no subtitle track at all (neither
+    ASR nor manual) cannot be processed.
+  - No control over ASR quality: raw ASR fragments may contain transcription
+    errors and have no punctuation — hence the next pipeline stage.
+  - Source language not selectable: the library picks the best available track
+    according to a priority list; it is not possible to force a source language
+    different from the video's own language.
+
+--------------------------------------------------------------------------------
+2. deepmultilingualpunctuation  /  oliverguhr/fullstop-punctuation-multilang-large
+--------------------------------------------------------------------------------
+
+Installation:
+  C:\Python314\python.exe -m pip install deepmultilingualpunctuation
+  C:\Python314\python.exe -m pip install transformers
+
+  Note: deepmultilingualpunctuation v1.0.1 uses the "grouped_entities" argument
+  internally, which is incompatible with transformers >= 5.x. The application
+  works around this by calling the Hugging Face pipeline directly
+  (pipeline("ner", ..., aggregation_strategy=None)) without going through the
+  library's wrapper.
+
+Role in the application:
+  Restore punctuation in the merged ASR fragment text before splitting it into
+  sentences. YouTube ASR produces no commas, periods, or question marks — the
+  text is a continuous stream of words with no sentence structure. This module
+  inserts appropriate punctuation, which allows the next stage (splitAtSentences)
+  to determine sentence boundaries correctly.
+
+Model: oliverguhr/fullstop-punctuation-multilang-large
+  Architecture: XLM-RoBERTa Large fine-tuned for punctuation classification
+  (NER). It predicts, after each token, whether a punctuation mark should be
+  inserted (one of: nothing, comma, period, question mark, exclamation mark).
+  Size: approximately 680 MB, downloaded automatically from Hugging Face on
+  first run and cached in ~/.cache/huggingface.
+
+How it works:
+  All transcript fragments are concatenated into a single continuous stream
+  before being submitted to the model. This gives the model maximum cross-
+  sentence context, which improves accuracy compared to processing fragments
+  one by one. The output contains exactly the same number of words as the input
+  (the model neither adds nor removes words). Punctuated words are then
+  redistributed to the original entries by word count.
+
+Strengths:
+  - Wide context: processing the whole transcript as a single stream allows the
+    model to handle sentence transitions more accurately than entry-by-entry
+    processing.
+  - Multilingual: a single model covers all supported languages with no need
+    to load a different model per language.
+  - Graceful fallback: if the script or model is missing, the stage is simply
+    skipped; the application continues without punctuation, with less precise
+    sentence splitting.
+  - SentencePiece tokenisation: the model uses XLM-RoBERTa whose SentencePiece
+    tokenisation (▁ markers) handles words correctly across all Latin-script
+    languages and Polish.
+
+Current limitations:
+  - Officially supported languages: Czech (cs), German (de), English (en),
+    Spanish (es), French (fr), Italian (it), Polish (pl), Slovak (sk). Other
+    languages are not supported and will be processed without punctuation
+    (silent fallback).
+    -> This is why Portuguese (pt), Dutch (nl), and Russian (ru) were removed
+       from the application's target languages.
+  - Slow first run: downloading the model (~680 MB) may take several minutes
+    depending on the connection. Subsequent runs use the local cache.
+  - Slow CPU inference: without a GPU, processing an average-length transcript
+    takes between 20 and 90 seconds. This is the main source of latency when
+    loading a video.
+  - Window fragmentation: the transcript is split into windows of at most 200
+    words to stay within XLM-RoBERTa's token limit (~512 tokens). Window
+    boundaries may slightly degrade punctuation quality at those exact points.
+  - Version incompatibility: deepmultilingualpunctuation <= 1.0.1 is
+    incompatible with transformers >= 5.x (removed argument). The application
+    works around this by not using the library's wrapper.
+
+--------------------------------------------------------------------------------
+Python compatibility
+--------------------------------------------------------------------------------
+
+Both scripts are tested with Python 3.14 (C:\Python314\python.exe).
+The executable path is configurable in application.properties via the
+app.transcript.python property. An absolute path is required because
+ProcessBuilder does not inherit the full Windows shell PATH.
+
+================================================================================

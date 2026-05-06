@@ -149,11 +149,11 @@ public class YouTubeTranscriptService {
      * Returns subtitles in the video's source language (before any translation).
      */
     public List<SubtitleEntry> fetchViaYtdlp(String videoId) throws IOException, InterruptedException {
-        return fetchViaYtdlp(videoId, s -> {});
+        return fetchViaYtdlp(videoId, s -> {}).entries;
     }
 
     /** Internal implementation of fetchViaYtdlp; accepts a progress callback for SSE streaming. */
-    private List<SubtitleEntry> fetchViaYtdlp(String videoId, Consumer<String> progress)
+    private TranscriptResult fetchViaYtdlp(String videoId, Consumer<String> progress)
             throws IOException, InterruptedException {
         System.out.println("[Transcript] fetchViaYtdlp videoId=" + videoId);
 
@@ -215,13 +215,22 @@ public class YouTubeTranscriptService {
             throw new RuntimeException("Python script error: " + root.path("error").asText());
         }
 
-        if (!root.isArray()) {
+        // New format: {"language": "xx", "entries": [...]}
+        // Legacy fallback: plain array (kept for safety)
+        String detectedLanguage = null;
+        JsonNode entriesNode;
+        if (root.isObject() && root.has("entries")) {
+            detectedLanguage = root.path("language").asText(null);
+            entriesNode = root.path("entries");
+        } else if (root.isArray()) {
+            entriesNode = root;   // legacy plain-array format
+        } else {
             throw new IOException("Unexpected JSON from Python script: "
                 + jsonOutput.substring(0, Math.min(200, jsonOutput.length())));
         }
 
         List<SubtitleEntry> raw = new ArrayList<>();
-        for (JsonNode node : root) {
+        for (JsonNode node : entriesNode) {
             long startMs    = (long)(node.path("start").asDouble(0) * 1000);
             long durationMs = (long)(node.path("duration").asDouble(3) * 1000);
             String text     = cleanSubtitleText(node.path("text").asText("").trim());
@@ -236,17 +245,15 @@ public class YouTubeTranscriptService {
             + entries.size() + " merged phrases");
 
         // Restore punctuation via deepmultilingualpunctuation (graceful fallback if unavailable)
-        progress.accept("{\"step\":\"punctuation\",\"label\":\"Restauration de la ponctuation...\"}");
+        progress.accept("{\"step\":\"punctuation\",\"label\":\"punctuation\"}");
         entries = addPunctuation(entries);
 
         // Re-segment entries so each one holds exactly one complete sentence.
-        // This step only does useful work when punctuation was actually added above;
-        // if addPunctuation() fell back, the entries are returned unchanged.
-        progress.accept("{\"step\":\"sentences\",\"label\":\"Découpage en phrases...\"}");
+        progress.accept("{\"step\":\"sentences\",\"label\":\"sentences\"}");
         entries = splitAtSentences(entries);
 
         System.out.println("[Transcript] Final: " + entries.size() + " sentence-aligned entries");
-        return entries;
+        return new TranscriptResult(detectedLanguage, entries);
     }
 
     /**
@@ -583,24 +590,39 @@ public class YouTubeTranscriptService {
     }
 
     /**
-     * Fetches the source transcript with SSE progress events.
-     * Emits "punctuation" and "sentences" progress steps via the callback as each stage starts.
-     * Falls back to the standard HTTP path (without granular progress) if the Python script fails.
+     * Fetches the full transcript result (entries + detected source language code).
+     * Used by the SSE endpoint so the controller knows the video's original language,
+     * which is needed when lang1="auto" (immersion mode: track 1 = source language as-is).
      */
-    public List<SubtitleEntry> fetchTranscriptWithProgress(String videoId, Consumer<String> progress)
+    public TranscriptResult fetchTranscriptFull(String videoId, Consumer<String> progress)
             throws IOException, InterruptedException {
-        System.out.println("[Transcript] Starting transcript fetch (with progress) for videoId=" + videoId);
+        System.out.println("[Transcript] Starting transcript fetch (full) for videoId=" + videoId);
 
         try {
-            List<SubtitleEntry> result = fetchViaYtdlp(videoId, progress);
-            if (!result.isEmpty()) return result;
+            TranscriptResult result = fetchViaYtdlp(videoId, progress);
+            if (!result.entries.isEmpty()) return result;
         } catch (Exception e) {
             System.err.println("[Transcript] Python script failed: " + e.getMessage()
                 + " — falling back to direct HTTP");
         }
 
-        // HTTP fallback (no granular progress — these stages are not available without the Python pipeline)
+        // HTTP fallback: language detection is not available on this path
         System.out.println("[Transcript] HTTP fallback...");
+        List<SubtitleEntry> entries = fetchViaHttp(videoId);
+        return new TranscriptResult(null, entries);
+    }
+
+    /**
+     * Fetches the source transcript with SSE progress events (entries only, no language code).
+     * Kept for backward compatibility; delegates to fetchTranscriptFull internally.
+     */
+    public List<SubtitleEntry> fetchTranscriptWithProgress(String videoId, Consumer<String> progress)
+            throws IOException, InterruptedException {
+        return fetchTranscriptFull(videoId, progress).entries;
+    }
+
+    /** Shared HTTP fallback logic used by both fetchTranscript and fetchTranscriptFull. */
+    private List<SubtitleEntry> fetchViaHttp(String videoId) throws IOException, InterruptedException {
         String captionBaseUrl = fetchCaptionBaseUrl(videoId);
         if (captionBaseUrl == null) {
             throw new RuntimeException(
@@ -632,42 +654,7 @@ public class YouTubeTranscriptService {
 
         // Attempt 2: direct HTTP fallback (less reliable, may return empty)
         System.out.println("[Transcript] HTTP fallback...");
-
-        String captionBaseUrl = fetchCaptionBaseUrl(videoId);
-
-        if (captionBaseUrl == null) {
-            throw new RuntimeException(
-                "No subtitles available for video ID: " + videoId +
-                ". The video must have captions enabled (auto-generated or manual)."
-            );
-        }
-
-        String base = captionBaseUrl.replaceAll("&fmt=[^&]*", "");
-
-        // Try JSON3 format
-        String jsonUrl = base + "&fmt=json3";
-        System.out.println("[Transcript] Trying JSON3...");
-        String captionJson = fetchTimedtext(jsonUrl, videoId);
-
-        // JSON3 empty — try default XML format
-        if (captionJson.isBlank()) {
-            System.out.println("[Transcript] JSON3 empty — trying XML (no fmt)...");
-            captionJson = fetchTimedtext(base, videoId);
-        }
-
-        // Still empty — try srv3 format
-        if (captionJson.isBlank()) {
-            System.out.println("[Transcript] XML empty — trying srv3...");
-            captionJson = fetchTimedtext(base + "&fmt=srv3", videoId);
-        }
-
-        System.out.println("[Transcript] Response: " + captionJson.length() + " bytes");
-        System.out.println("[Transcript] Preview:  "
-            + captionJson.substring(0, Math.min(300, captionJson.length())));
-
-        List<SubtitleEntry> result = parseCaptionJson3(captionJson);
-        System.out.println("[Transcript] Done: " + result.size() + " subtitles parsed");
-        return result;
+        return fetchViaHttp(videoId);
     }
 
     /** Returns raw diagnostic data for the /api/debug/transcript endpoint. */
@@ -943,6 +930,21 @@ public class YouTubeTranscriptService {
             throw new IOException("HTTP " + response.statusCode() + " for: " + url);
         }
         return response.body();
+    }
+
+    // ─── Result holder ───────────────────────────────────────────
+
+    /** Holds the detected source-language code alongside the processed subtitle entries. */
+    public static class TranscriptResult {
+        /** BCP 47 language code detected by youtube-transcript-api (e.g. "de", "en").
+         *  May be null when the HTTP fallback was used. */
+        public final String languageCode;
+        public final List<SubtitleEntry> entries;
+
+        public TranscriptResult(String languageCode, List<SubtitleEntry> entries) {
+            this.languageCode = languageCode;
+            this.entries      = entries;
+        }
     }
 
     // ─── Diagnostic data class ───────────────────────────────────

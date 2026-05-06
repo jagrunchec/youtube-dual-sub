@@ -1,15 +1,15 @@
 /* ─── State ─────────────────────────────────────────────────── */
-let selectedLang1 = 'fr';
-let selectedLang2 = 'de';
-let subtitles1    = [];
-let subtitles2    = [];
-let player        = null;
-let syncInterval  = null;
+let selectedLang1   = 'fr';
+let selectedLang2   = 'de';
+let subtitles1      = [];
+let subtitles2      = [];
+let player          = null;
+let syncInterval    = null;
+let immersionMode   = false;
 
 const LANG_LABELS = {
-    fr: 'Français',  en: 'English',    es: 'Español',
-    it: 'Italiano',  de: 'Deutsch',    pt: 'Português',
-    nl: 'Nederlands', pl: 'Polski',    ru: 'Русский',
+    fr: 'Français', en: 'English', es: 'Español',
+    it: 'Italiano', de: 'Deutsch', pl: 'Polski',
 };
 
 /* ─── Internationalisation ───────────────────────────────────── */
@@ -31,6 +31,9 @@ const I18N = {
         stepPunctuation:'Restauration de la ponctuation',
         stepSentences:  'Découpage en phrases',
         stepTranslation:'Traduction',
+        stepSourceAuto: 'Piste 1 : langue source',
+        immLabel:       'MODE IMMERSION',
+        immHint:        'langue de la vidéo · ma langue',
         hudStatus:      (n1, l1, n2, l2) => `${n1} lignes ${l1} · ${n2} lignes ${l2}`,
     },
     en: {
@@ -50,6 +53,9 @@ const I18N = {
         stepPunctuation:'Restoring punctuation',
         stepSentences:  'Splitting into sentences',
         stepTranslation:'Translation',
+        stepSourceAuto: 'Track 1: source language',
+        immLabel:       'IMMERSION MODE',
+        immHint:        'video language · my language',
         hudStatus:      (n1, l1, n2, l2) => `${n1} lines ${l1} · ${n2} lines ${l2}`,
     },
     es: {
@@ -69,6 +75,9 @@ const I18N = {
         stepPunctuation:'Restaurando puntuación',
         stepSentences:  'Dividiendo en frases',
         stepTranslation:'Traducción',
+        stepSourceAuto: 'Pista 1: idioma fuente',
+        immLabel:       'MODO INMERSIÓN',
+        immHint:        'idioma del vídeo · mi idioma',
         hudStatus:      (n1, l1, n2, l2) => `${n1} líneas ${l1} · ${n2} líneas ${l2}`,
     },
     it: {
@@ -88,6 +97,9 @@ const I18N = {
         stepPunctuation:'Ripristino punteggiatura',
         stepSentences:  'Suddivisione in frasi',
         stepTranslation:'Traduzione',
+        stepSourceAuto: 'Traccia 1: lingua del video',
+        immLabel:       'MODALITÀ IMMERSIONE',
+        immHint:        'lingua sorgente · la mia lingua',
         hudStatus:      (n1, l1, n2, l2) => `${n1} righe ${l1} · ${n2} righe ${l2}`,
     },
     de: {
@@ -107,45 +119,10 @@ const I18N = {
         stepPunctuation:'Zeichensetzung wiederherstellen',
         stepSentences:  'In Sätze aufteilen',
         stepTranslation:'Übersetzung',
+        stepSourceAuto: 'Spur 1: Sprache des Videos',
+        immLabel:       'IMMERSIONSMODUS',
+        immHint:        'Quellsprache · meine Sprache',
         hudStatus:      (n1, l1, n2, l2) => `${n1} Zeilen ${l1} · ${n2} Zeilen ${l2}`,
-    },
-    pt: {
-        title:          'DualSub — Tradução Dupla do YouTube',
-        tagline:        '// TRADUÇÃO SIMULTÂNEA  ·  FAIXA DUPLA EM TEMPO REAL',
-        labelTarget:    '// DESTINO',
-        labelLangs:     '// IDIOMAS',
-        slotPrimary:    'IDIOMA PRINCIPAL',
-        slotSecondary:  'IDIOMA SECUNDÁRIO',
-        placeholder:    'https://www.youtube.com/watch?v=…',
-        btnAnalyze:     'ANALISAR E TRADUZIR',
-        btnLoading:     'A TRADUZIR…',
-        btnBack:        '◄  VOLTAR',
-        errNoUrl:       'Por favor, insira um URL do YouTube.',
-        errServer:      'Não é possível contactar o servidor. Verifique se o Spring Boot está na porta 8080.',
-        stepTranscript: 'A obter a transcrição',
-        stepPunctuation:'A restaurar a pontuação',
-        stepSentences:  'A dividir em frases',
-        stepTranslation:'Tradução',
-        hudStatus:      (n1, l1, n2, l2) => `${n1} linhas ${l1} · ${n2} linhas ${l2}`,
-    },
-    nl: {
-        title:          'DualSub — Dubbele YouTube-vertaling',
-        tagline:        '// SIMULTAANVERTALING  ·  DUBBELE TRACK IN REAL TIME',
-        labelTarget:    '// DOEL',
-        labelLangs:     '// TALEN',
-        slotPrimary:    'HOOFDTAAL',
-        slotSecondary:  'TWEEDE TAAL',
-        placeholder:    'https://www.youtube.com/watch?v=…',
-        btnAnalyze:     'ANALYSEREN & VERTALEN',
-        btnLoading:     'VERTALING BEZIG…',
-        btnBack:        '◄  TERUG',
-        errNoUrl:       'Voer een YouTube-URL in.',
-        errServer:      'Kan de server niet bereiken. Controleer of Spring Boot draait op poort 8080.',
-        stepTranscript: 'Transcript ophalen',
-        stepPunctuation:'Interpunctie herstellen',
-        stepSentences:  'In zinnen opdelen',
-        stepTranslation:'Vertaling',
-        hudStatus:      (n1, l1, n2, l2) => `${n1} regels ${l1} · ${n2} regels ${l2}`,
     },
     pl: {
         title:          'DualSub — Podwójne tłumaczenie YouTube',
@@ -164,26 +141,10 @@ const I18N = {
         stepPunctuation:'Przywracanie interpunkcji',
         stepSentences:  'Podział na zdania',
         stepTranslation:'Tłumaczenie',
+        stepSourceAuto: 'Ścieżka 1: język wideo',
+        immLabel:       'TRYB IMMERSJI',
+        immHint:        'język źródłowy · mój język',
         hudStatus:      (n1, l1, n2, l2) => `${n1} linii ${l1} · ${n2} linii ${l2}`,
-    },
-    ru: {
-        title:          'DualSub — Двойной перевод YouTube',
-        tagline:        '// СИНХРОННЫЙ ПЕРЕВОД  ·  ДВОЙНАЯ ДОРОЖКА В РЕАЛЬНОМ ВРЕМЕНИ',
-        labelTarget:    '// ЦЕЛЬ',
-        labelLangs:     '// ЯЗЫКИ',
-        slotPrimary:    'ОСНОВНОЙ ЯЗЫК',
-        slotSecondary:  'ДОПОЛНИТЕЛЬНЫЙ ЯЗЫК',
-        placeholder:    'https://www.youtube.com/watch?v=…',
-        btnAnalyze:     'АНАЛИЗИРОВАТЬ И ПЕРЕВЕСТИ',
-        btnLoading:     'ПЕРЕВОД…',
-        btnBack:        '◄  НАЗАД',
-        errNoUrl:       'Введите URL YouTube.',
-        errServer:      'Сервер недоступен. Убедитесь, что Spring Boot запущен на порту 8080.',
-        stepTranscript: 'Получение транскрипции',
-        stepPunctuation:'Восстановление пунктуации',
-        stepSentences:  'Разбивка на предложения',
-        stepTranslation:'Перевод',
-        hudStatus:      (n1, l1, n2, l2) => `${n1} строк ${l1} · ${n2} строк ${l2}`,
     },
 };
 
@@ -214,6 +175,16 @@ function applyI18n() {
     document.getElementById('videoUrl').placeholder       = t.placeholder;
     document.getElementById('btnText').textContent        = t.btnAnalyze;
     document.getElementById('btnBack').textContent        = t.btnBack;
+    document.getElementById('immersionLabel').textContent = t.immLabel;
+    document.getElementById('immersionHint').textContent  = t.immHint;
+}
+
+/* ─── Immersion mode ────────────────────────────────────────── */
+function toggleImmersion(cb) {
+    immersionMode = cb.checked;
+    // Dim both language rows to show they are overridden automatically
+    document.getElementById('slot1').classList.toggle('imm-locked', immersionMode);
+    document.getElementById('slot2').classList.toggle('imm-locked', immersionMode);
 }
 
 /* ─── Boot ──────────────────────────────────────────────────── */
@@ -249,7 +220,7 @@ function initProgress(lang1Label, lang2Label) {
     PIPELINE_STEPS[0].label = t.stepTranscript;
     PIPELINE_STEPS[1].label = t.stepPunctuation;
     PIPELINE_STEPS[2].label = t.stepSentences;
-    PIPELINE_STEPS[3].label = t.stepTranslation + ' ' + lang1Label;
+    PIPELINE_STEPS[3].label = immersionMode ? t.stepSourceAuto : t.stepTranslation + ' ' + lang1Label;
     PIPELINE_STEPS[4].label = t.stepTranslation + ' ' + lang2Label;
 
     const panel = document.getElementById('progressPanel');
@@ -286,11 +257,14 @@ function processVideo() {
     hideError();
     setLoading(true);
 
-    const lang1Label = LANG_LABELS[selectedLang1] || selectedLang1.toUpperCase();
-    const lang2Label = LANG_LABELS[selectedLang2] || selectedLang2.toUpperCase();
+    // In immersion mode: lang1 = auto-detected (video's language), lang2 = UI language
+    const effectiveLang1 = immersionMode ? 'auto'   : selectedLang1;
+    const effectiveLang2 = immersionMode ? uiLang   : selectedLang2;
+    const lang1Label = immersionMode ? '?' : (LANG_LABELS[selectedLang1] || selectedLang1.toUpperCase());
+    const lang2Label = LANG_LABELS[effectiveLang2] || effectiveLang2.toUpperCase();
     initProgress(lang1Label, lang2Label);
 
-    const params = new URLSearchParams({ videoUrl: url, lang1: selectedLang1, lang2: selectedLang2 });
+    const params = new URLSearchParams({ videoUrl: url, lang1: effectiveLang1, lang2: effectiveLang2 });
     const sse = new EventSource('/api/process/stream?' + params);
     let sseHandled = false;
 

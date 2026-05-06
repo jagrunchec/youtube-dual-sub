@@ -144,9 +144,11 @@ public class VideoController {
                 System.out.println("[Stream] Processing: " + videoId
                     + " | lang1=" + lang1 + " lang2=" + lang2);
 
-                // Stage 1: transcript (Python script + merge)
-                progress.accept("{\"step\":\"transcript\",\"label\":\"Récupération du transcript...\"}");
-                List<SubtitleEntry> original = youTubeService.fetchTranscriptWithProgress(videoId, progress);
+                // Stage 1: transcript (Python script + merge + punctuation + sentences)
+                progress.accept("{\"step\":\"transcript\"}");
+                YouTubeTranscriptService.TranscriptResult transcript =
+                    youTubeService.fetchTranscriptFull(videoId, progress);
+                List<SubtitleEntry> original = transcript.entries;
 
                 if (original.isEmpty()) {
                     emitter.send(SseEmitter.event().name("apierror").data(
@@ -155,18 +157,33 @@ public class VideoController {
                     return;
                 }
 
-                // Stage 4: translation 1
-                String lang1Label = TranslationService.LANGUAGES.getOrDefault(lang1, lang1);
-                String lang2Label = TranslationService.LANGUAGES.getOrDefault(lang2, lang2);
-                progress.accept("{\"step\":\"translation1\",\"label\":\"Traduction " + lang1Label + "...\"}");
-                List<SubtitleEntry> subtitles1 = translationService.translate(original, lang1);
+                // Stage 4: track 1
+                // When lang1="auto" (immersion mode), serve source entries without any translation.
+                final boolean lang1Auto = "auto".equals(lang1);
+                String lang1Label;
+                List<SubtitleEntry> subtitles1;
+                if (lang1Auto) {
+                    progress.accept("{\"step\":\"translation1\"}");
+                    subtitles1 = original;   // source language as-is — no network call needed
+                    String detectedCode = transcript.languageCode;
+                    lang1Label = (detectedCode != null)
+                        ? TranslationService.LANGUAGES.getOrDefault(
+                              detectedCode, detectedCode.toUpperCase())
+                        : "Source";
+                } else {
+                    lang1Label = TranslationService.LANGUAGES.getOrDefault(lang1, lang1);
+                    progress.accept("{\"step\":\"translation1\"}");
+                    subtitles1 = translationService.translate(original, lang1);
+                }
 
-                // Stage 5: translation 2
-                progress.accept("{\"step\":\"translation2\",\"label\":\"Traduction " + lang2Label + "...\"}");
+                // Stage 5: track 2 (always a real language code)
+                String lang2Label = TranslationService.LANGUAGES.getOrDefault(lang2, lang2);
+                progress.accept("{\"step\":\"translation2\"}");
                 List<SubtitleEntry> subtitles2 = translationService.translate(original, lang2);
 
                 System.out.println("[Stream] Done: " + subtitles1.size()
-                    + " [" + lang1 + "] / " + subtitles2.size() + " [" + lang2 + "]");
+                    + " [" + (lang1Auto ? "auto→" + transcript.languageCode : lang1) + "] / "
+                    + subtitles2.size() + " [" + lang2 + "]");
 
                 ProcessResponse resp = new ProcessResponse();
                 resp.setVideoId(videoId);

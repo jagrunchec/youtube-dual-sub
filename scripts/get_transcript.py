@@ -63,7 +63,12 @@ def main():
             for entry in entries
             if entry.text.strip()
         ]
-        print(json.dumps(result, ensure_ascii=False))
+        # Include the detected language code so the Java layer can use it
+        # (e.g. for "immersion mode" where track 1 = source language as-is)
+        print(json.dumps({
+            "language": found.language_code,
+            "entries":  result,
+        }, ensure_ascii=False))
 
     except Exception as e:
         print(json.dumps({"error": str(e)}))

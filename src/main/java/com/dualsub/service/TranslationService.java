@@ -45,10 +45,7 @@ public class TranslationService {
         LANGUAGES.put("es", "Español");
         LANGUAGES.put("it", "Italiano");
         LANGUAGES.put("de", "Deutsch");
-        LANGUAGES.put("pt", "Português");
-        LANGUAGES.put("nl", "Nederlands");
         LANGUAGES.put("pl", "Polski");
-        LANGUAGES.put("ru", "Русский");
     }
 
     public List<SubtitleEntry> translate(List<SubtitleEntry> entries, String targetLang)
