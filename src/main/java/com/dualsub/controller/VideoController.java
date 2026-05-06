@@ -5,12 +5,18 @@ import com.dualsub.model.ProcessResponse;
 import com.dualsub.model.SubtitleEntry;
 import com.dualsub.service.TranslationService;
 import com.dualsub.service.YouTubeTranscriptService;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.function.Consumer;
 
 @RestController
 @RequestMapping("/api")
@@ -18,6 +24,8 @@ public class VideoController {
 
     private final YouTubeTranscriptService youTubeService;
     private final TranslationService translationService;
+    private final ExecutorService executor = Executors.newCachedThreadPool();
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     public VideoController(YouTubeTranscriptService youTubeService,
                            TranslationService translationService) {
@@ -108,6 +116,85 @@ public class VideoController {
             return ResponseEntity.internalServerError()
                 .body(Map.of("error", e.getMessage()));
         }
+    }
+
+    /**
+     * SSE endpoint: streams pipeline progress then the final result.
+     * Stages emitted: transcript → punctuation → sentences → translation1 → translation2 → complete.
+     *
+     * Using GET (not POST) because EventSource only supports GET requests.
+     * Parameters are passed as query strings; Spring URL-decodes them automatically.
+     */
+    @GetMapping(value = "/process/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public SseEmitter processStream(
+            @RequestParam String videoUrl,
+            @RequestParam String lang1,
+            @RequestParam String lang2) {
+
+        SseEmitter emitter = new SseEmitter(300_000L); // 5-minute timeout
+
+        executor.submit(() -> {
+            try {
+                Consumer<String> progress = json -> {
+                    try { emitter.send(SseEmitter.event().name("progress").data(json)); }
+                    catch (Exception ignored) { /* client disconnected */ }
+                };
+
+                String videoId = youTubeService.extractVideoId(videoUrl);
+                System.out.println("[Stream] Processing: " + videoId
+                    + " | lang1=" + lang1 + " lang2=" + lang2);
+
+                // Stage 1: transcript (Python script + merge)
+                progress.accept("{\"step\":\"transcript\",\"label\":\"Récupération du transcript...\"}");
+                List<SubtitleEntry> original = youTubeService.fetchTranscriptWithProgress(videoId, progress);
+
+                if (original.isEmpty()) {
+                    emitter.send(SseEmitter.event().name("apierror").data(
+                        "{\"error\":\"Transcript vide. La vidéo doit avoir des sous-titres activés.\"}"));
+                    emitter.complete();
+                    return;
+                }
+
+                // Stage 4: translation 1
+                String lang1Label = TranslationService.LANGUAGES.getOrDefault(lang1, lang1);
+                String lang2Label = TranslationService.LANGUAGES.getOrDefault(lang2, lang2);
+                progress.accept("{\"step\":\"translation1\",\"label\":\"Traduction " + lang1Label + "...\"}");
+                List<SubtitleEntry> subtitles1 = translationService.translate(original, lang1);
+
+                // Stage 5: translation 2
+                progress.accept("{\"step\":\"translation2\",\"label\":\"Traduction " + lang2Label + "...\"}");
+                List<SubtitleEntry> subtitles2 = translationService.translate(original, lang2);
+
+                System.out.println("[Stream] Done: " + subtitles1.size()
+                    + " [" + lang1 + "] / " + subtitles2.size() + " [" + lang2 + "]");
+
+                ProcessResponse resp = new ProcessResponse();
+                resp.setVideoId(videoId);
+                resp.setSubtitles1(subtitles1);
+                resp.setSubtitles2(subtitles2);
+                resp.setLang1Label(lang1Label);
+                resp.setLang2Label(lang2Label);
+
+                emitter.send(SseEmitter.event().name("complete").data(
+                    objectMapper.writeValueAsString(resp)));
+                emitter.complete();
+
+            } catch (IllegalArgumentException e) {
+                streamError(emitter, e.getMessage());
+            } catch (Exception e) {
+                streamError(emitter, "Erreur serveur : " + e.getMessage());
+            }
+        });
+
+        return emitter;
+    }
+
+    private void streamError(SseEmitter emitter, String message) {
+        try {
+            String safe = (message == null ? "Erreur inconnue" : message).replace("\"", "'");
+            emitter.send(SseEmitter.event().name("apierror").data("{\"error\":\"" + safe + "\"}"));
+        } catch (Exception ignored) {}
+        try { emitter.complete(); } catch (Exception ignored) {}
     }
 
     @PostMapping("/process")

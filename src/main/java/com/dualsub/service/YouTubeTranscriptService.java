@@ -20,6 +20,7 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -148,6 +149,12 @@ public class YouTubeTranscriptService {
      * Returns subtitles in the video's source language (before any translation).
      */
     public List<SubtitleEntry> fetchViaYtdlp(String videoId) throws IOException, InterruptedException {
+        return fetchViaYtdlp(videoId, s -> {});
+    }
+
+    /** Internal implementation of fetchViaYtdlp; accepts a progress callback for SSE streaming. */
+    private List<SubtitleEntry> fetchViaYtdlp(String videoId, Consumer<String> progress)
+            throws IOException, InterruptedException {
         System.out.println("[Transcript] fetchViaYtdlp videoId=" + videoId);
 
         // Locate the Python script
@@ -229,11 +236,13 @@ public class YouTubeTranscriptService {
             + entries.size() + " merged phrases");
 
         // Restore punctuation via deepmultilingualpunctuation (graceful fallback if unavailable)
+        progress.accept("{\"step\":\"punctuation\",\"label\":\"Restauration de la ponctuation...\"}");
         entries = addPunctuation(entries);
 
         // Re-segment entries so each one holds exactly one complete sentence.
         // This step only does useful work when punctuation was actually added above;
         // if addPunctuation() fell back, the entries are returned unchanged.
+        progress.accept("{\"step\":\"sentences\",\"label\":\"Découpage en phrases...\"}");
         entries = splitAtSentences(entries);
 
         System.out.println("[Transcript] Final: " + entries.size() + " sentence-aligned entries");
@@ -571,6 +580,41 @@ public class YouTubeTranscriptService {
         }
 
         return merged;
+    }
+
+    /**
+     * Fetches the source transcript with SSE progress events.
+     * Emits "punctuation" and "sentences" progress steps via the callback as each stage starts.
+     * Falls back to the standard HTTP path (without granular progress) if the Python script fails.
+     */
+    public List<SubtitleEntry> fetchTranscriptWithProgress(String videoId, Consumer<String> progress)
+            throws IOException, InterruptedException {
+        System.out.println("[Transcript] Starting transcript fetch (with progress) for videoId=" + videoId);
+
+        try {
+            List<SubtitleEntry> result = fetchViaYtdlp(videoId, progress);
+            if (!result.isEmpty()) return result;
+        } catch (Exception e) {
+            System.err.println("[Transcript] Python script failed: " + e.getMessage()
+                + " — falling back to direct HTTP");
+        }
+
+        // HTTP fallback (no granular progress — these stages are not available without the Python pipeline)
+        System.out.println("[Transcript] HTTP fallback...");
+        String captionBaseUrl = fetchCaptionBaseUrl(videoId);
+        if (captionBaseUrl == null) {
+            throw new RuntimeException(
+                "No subtitles available for video ID: " + videoId +
+                ". The video must have captions enabled (auto-generated or manual)."
+            );
+        }
+        String base = captionBaseUrl.replaceAll("&fmt=[^&]*", "");
+        String captionJson = fetchTimedtext(base + "&fmt=json3", videoId);
+        if (captionJson.isBlank()) captionJson = fetchTimedtext(base, videoId);
+        if (captionJson.isBlank()) captionJson = fetchTimedtext(base + "&fmt=srv3", videoId);
+        List<SubtitleEntry> result = parseCaptionJson3(captionJson);
+        System.out.println("[Transcript] HTTP fallback done: " + result.size() + " subtitles");
+        return result;
     }
 
     /** Fetches the source transcript (Python script first, HTTP fallback). */

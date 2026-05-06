@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this project does
 
-DualSub is a local web application that plays a YouTube video and shows two simultaneous subtitle tracks underneath it, each translated into a different language chosen by the user. The user picks a video URL and two languages (FR, EN, ES, IT, DE); the backend fetches the transcript and runs both translations in parallel before the video starts.
+DualSub is a local web application that plays a YouTube video and shows two simultaneous subtitle tracks underneath it, each translated into a different language chosen by the user. The user picks a video URL and two languages (FR, EN, ES, IT, DE); the backend fetches the transcript, restores punctuation, and runs both translations in parallel before the video starts.
 
 ## Build and run
 
@@ -31,54 +31,65 @@ C:\Python314\python.exe -m pip install youtube-transcript-api
 C:\Python314\python.exe -m pip install deepmultilingualpunctuation
 ```
 
-`deepmultilingualpunctuation` downloads the `oliverguhr/fullstop-punctuation-multilang-large` model (~680 MB) from Hugging Face on the first run. Subsequent runs load from the local cache (`~/.cache/huggingface`). If the library is not installed, the punctuation step is silently skipped.
+`deepmultilingualpunctuation` downloads the `oliverguhr/fullstop-punctuation-multilang-large` model (~680 MB) from Hugging Face on the first run. Subsequent runs use the local cache (`~/.cache/huggingface`). If the library is not installed, the punctuation step is silently skipped and `splitAtSentences()` becomes a no-op (no sentence-boundary splitting without punctuation markers).
 
-`app.transcript.python` must be an **absolute path** — `ProcessBuilder` does not inherit the full shell PATH, so `python` alone will resolve to the wrong executable (the Windows Store stub).
+`app.transcript.python` must be an **absolute path** — `ProcessBuilder` does not inherit the full shell PATH, so `python` alone resolves to the Windows Store stub.
 
 ## Architecture
 
-### Request flow
+### Full pipeline (one request)
 
 ```
 Browser → POST /api/process
             │
-            ├─ YouTubeTranscriptService.fetchTranscript()
-            │     └─ fetchViaYtdlp()          ← subprocess: scripts/get_transcript.py
-            │           └─ mergeSubtitles()   ← merge ASR fragments into readable phrases
-            │
+            └─ YouTubeTranscriptService.fetchTranscript()
+                  └─ fetchViaYtdlp()              ← subprocess: scripts/get_transcript.py
+                        ├─ mergeSubtitles()        ← merge ASR fragments → ~20-word phrases
+                        ├─ addPunctuation()        ← subprocess: scripts/punctuate.py
+                        └─ splitAtSentences()      ← re-segment at sentence boundaries
+
             ├─ TranslationService.translate(entries, lang1)  ← Google Translate (gtx, no key)
             └─ TranslationService.translate(entries, lang2)
 ```
 
-### Why two separate steps instead of YouTube's tlang parameter
+Both translations receive the **same** sentence-aligned source entries and preserve their timing exactly. The browser sync loop (`app.js`) uses those shared timestamps for both tracks simultaneously.
 
-YouTube's `tlang` parameter (which would have YouTube do the translation server-side) returns HTTP 429 for all server-side requests regardless of cookies, delays, or HTTP version. Direct HTTP fetches of the timedtext endpoint also return `200 OK` with an empty body (YouTube's bot-detection silent-block). The Python `youtube-transcript-api` library bypasses this by using the Android VR InnerTube client, which is why it works where the Java HTTP client does not.
+### Why YouTube's tlang parameter is not used
+
+YouTube's `tlang` parameter returns HTTP 429 for all server-side requests regardless of cookies, delays, or HTTP version. Direct HTTP fetches of the timedtext endpoint return `200 OK` with an empty body (bot-detection silent-block via TLS fingerprinting). The Python `youtube-transcript-api` library bypasses this by using the Android VR InnerTube client.
 
 ### Key design decisions
 
-- **Subtitle merging** (`mergeSubtitles`): YouTube ASR produces 3–7 word fragments. These are merged into ~80-character phrases before translation — fewer, longer chunks improve both translation quality and readability. Merge stops at strong punctuation, gaps > 2500 ms, or when the combined text would exceed 80 chars.
+- **Subtitle merging** (`mergeSubtitles`): YouTube ASR produces 3–7 word fragments. `TARGET_CHARS=160` (~20 words), `GAP_MAX=1500 ms`, `GAP_BREAK=2500 ms`. Merge stops at strong punctuation, long silences, or when the combined text would exceed 160 chars. The 160-char target gives the punctuation model enough context per chunk.
+
+- **Punctuation restoration** (`addPunctuation` → `punctuate.py`): All merged entry texts are concatenated into one stream, fed to `oliverguhr/fullstop-punctuation-multilang-large` (XLM-RoBERTa, sentencepiece tokenisation), and the punctuated words are redistributed back to the original entries by word count. The model never adds or removes words, so the count is stable. Graceful fallback if the script or library is missing.
+
+- **Sentence re-segmentation** (`splitAtSentences`): After punctuation, flattens entries to a per-word list with proportionally interpolated timestamps, then reassembles at `.` `!` `?` boundaries (MAX_CHARS=200 safety valve). A post-pass pins every entry's `durationMs` to `nextEntry.startMs − thisEntry.startMs` — both trimming overshoots **and** extending undershoots — so the resulting intervals are non-overlapping and gapless, which is required for the binary search in `app.js` to work correctly. Minimum duration: 500 ms. First letter of each sentence is capitalised.
+
 - **UTF-8 everywhere**: `ProcessBuilder` sets `PYTHONIOENCODING=utf-8` and `PYTHONUTF8=1`; `TranslationService` reads HTTP responses as `byte[]` and decodes with `StandardCharsets.UTF_8` to avoid Java's ISO-8859-1 default.
-- **Google Translate chunking**: subtitles are batched into ≤ 2000-char chunks joined by `\n`, sent to the unofficial `gtx` endpoint, and split back by `\n`. A 400 ms delay between chunks prevents 429s.
-- **Binary search sync**: `app.js` runs a 100 ms `setInterval` and uses binary search over the sorted subtitle array to find the entry active at `player.getCurrentTime() * 1000`.
+
+- **Google Translate chunking**: subtitles are batched into ≤ 2000-char chunks joined by `\n`, sent to the unofficial `gtx` endpoint, and split back by `\n`. A 400 ms delay between chunks and one automatic retry on 429 prevent rate-limiting.
+
+- **Subtitle sync** (`app.js`): 100 ms `setInterval`. `find()` uses binary search to find the last entry whose `startMs ≤ nowMs`, then checks the duration window. The "last started" strategy is robust against any residual timing edge-cases.
 
 ### Source layout
 
 ```
 src/main/java/com/dualsub/
-  controller/VideoController.java     REST endpoints (/api/process, /api/debug/*)
-  service/YouTubeTranscriptService.java   transcript fetch + merge + punctuation pipeline
-  service/TranslationService.java         Google Translate chunking + retry
-  model/                                  SubtitleEntry, ProcessRequest, ProcessResponse
+  controller/VideoController.java          REST endpoints (/api/process, /api/debug/*)
+  service/YouTubeTranscriptService.java    transcript fetch → merge → punctuation → split pipeline
+  service/TranslationService.java          Google Translate chunking + retry
+  model/                                   SubtitleEntry, ProcessRequest, ProcessResponse
 
 src/main/resources/
-  static/index.html   single-page UI (language picker, YouTube IFrame, HUD)
-  static/app.js       YouTube IFrame API integration + subtitle sync loop
-  static/style.css    sci-fi / game theme (Orbitron font, neon glow, scanlines)
+  static/index.html        single-page UI (language picker, YouTube IFrame, HUD)
+  static/app.js            YouTube IFrame API + subtitle sync loop
+  static/style.css         sci-fi / game theme (Orbitron font, neon glow, scanlines)
   application.properties
 
 scripts/
-  get_transcript.py   called by fetchViaYtdlp(); fetches raw ASR fragments via youtube-transcript-api
-  punctuate.py        called by addPunctuation(); restores punctuation using deepmultilingualpunctuation
+  get_transcript.py   fetches raw ASR fragments via youtube-transcript-api; outputs JSON to stdout
+  punctuate.py        restores punctuation via deepmultilingualpunctuation; reads/writes JSON on stdin/stdout
 ```
 
 ### Debug endpoints

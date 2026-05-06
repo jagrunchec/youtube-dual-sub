@@ -29,65 +29,116 @@ function pick(row, code, btn) {
     else           selectedLang2 = code;
 }
 
+/* ─── Pipeline steps (for SSE progress display) ─────────────── */
+const PIPELINE_STEPS = [
+    { key: 'transcript',   label: 'Récupération du transcript' },
+    { key: 'punctuation',  label: 'Restauration de la ponctuation' },
+    { key: 'sentences',    label: 'Découpage en phrases' },
+    { key: 'translation1', label: '' },   // filled dynamically from lang labels
+    { key: 'translation2', label: '' },
+];
+
+function initProgress(lang1Label, lang2Label) {
+    PIPELINE_STEPS[3].label = 'Traduction ' + lang1Label;
+    PIPELINE_STEPS[4].label = 'Traduction ' + lang2Label;
+
+    const panel = document.getElementById('progressPanel');
+    panel.innerHTML = PIPELINE_STEPS.map((s, i) => `
+        <div class="progress-step" id="pstep-${s.key}">
+            <div class="step-icon">${i + 1}</div>
+            <span class="step-label">${s.label}</span>
+        </div>`).join('');
+    panel.classList.remove('hidden');
+}
+
+function updateStep(stepKey) {
+    const keys = PIPELINE_STEPS.map(s => s.key);
+    const idx  = keys.indexOf(stepKey);
+    keys.forEach((k, i) => {
+        const el = document.getElementById('pstep-' + k);
+        if (!el) return;
+        el.classList.remove('active', 'done');
+        if (i < idx)  el.classList.add('done');
+        if (i === idx) el.classList.add('active');
+    });
+}
+
+function hideProgress() {
+    document.getElementById('progressPanel').classList.add('hidden');
+}
+
 /* ─── Process video ─────────────────────────────────────────── */
-async function processVideo() {
+function processVideo() {
     const url = document.getElementById('videoUrl').value.trim();
     if (!url) { showError('Veuillez saisir une URL YouTube.'); return; }
 
-    setLoading(true);
     hideError();
+    setLoading(true);
 
-    try {
-        const resp = await fetch('/api/process', {
-            method:  'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body:    JSON.stringify({ videoUrl: url, lang1: selectedLang1, lang2: selectedLang2 })
-        });
+    const lang1Label = LANG_LABELS[selectedLang1] || selectedLang1.toUpperCase();
+    const lang2Label = LANG_LABELS[selectedLang2] || selectedLang2.toUpperCase();
+    initProgress(lang1Label, lang2Label);
 
-        const data = await resp.json();
+    const params = new URLSearchParams({ videoUrl: url, lang1: selectedLang1, lang2: selectedLang2 });
+    const sse = new EventSource('/api/process/stream?' + params);
+    let sseHandled = false;
 
-        if (!resp.ok) {
-            showError(data.error || 'Erreur lors du traitement de la vidéo.');
-            return;
-        }
+    sse.addEventListener('progress', e => {
+        const { step } = JSON.parse(e.data);
+        updateStep(step);
+    });
+
+    sse.addEventListener('complete', e => {
+        sseHandled = true;
+        sse.close();
+        const data = JSON.parse(e.data);
 
         subtitles1 = data.subtitles1 || [];
         subtitles2 = data.subtitles2 || [];
 
         // ── Diagnostic console ────────────────────────────────
-        console.log(`[DualSub] Réponse reçue :`);
-        console.log(`  videoId   : ${data.videoId}`);
-        console.log(`  lang1     : ${data.lang1Label} → ${subtitles1.length} sous-titres`);
-        console.log(`  lang2     : ${data.lang2Label} → ${subtitles2.length} sous-titres`);
+        console.log('[DualSub] Réponse reçue :');
+        console.log('  videoId   :', data.videoId);
+        console.log('  lang1     :', data.lang1Label, '→', subtitles1.length, 'sous-titres');
+        console.log('  lang2     :', data.lang2Label, '→', subtitles2.length, 'sous-titres');
         if (subtitles1.length > 0) {
-            console.log(`  1er sous-titre [${data.lang1Label}] :`, subtitles1[0]);
-            console.log(`  Der sous-titre [${data.lang1Label}] :`, subtitles1[subtitles1.length - 1]);
-        } else {
-            console.warn(`  ⚠ subtitles1 est VIDE`);
-        }
+            console.log('  1er sous-titre [' + data.lang1Label + '] :', subtitles1[0]);
+            console.log('  Der sous-titre [' + data.lang1Label + '] :', subtitles1[subtitles1.length - 1]);
+        } else { console.warn('  ⚠ subtitles1 est VIDE'); }
         if (subtitles2.length > 0) {
-            console.log(`  1er sous-titre [${data.lang2Label}] :`, subtitles2[0]);
-        } else {
-            console.warn(`  ⚠ subtitles2 est VIDE`);
-        }
+            console.log('  1er sous-titre [' + data.lang2Label + '] :', subtitles2[0]);
+        } else { console.warn('  ⚠ subtitles2 est VIDE'); }
         // ────────────────────────────────────────────────────
 
-        const label1 = data.lang1Label || LANG_LABELS[selectedLang1] || selectedLang1.toUpperCase();
-        const label2 = data.lang2Label || LANG_LABELS[selectedLang2] || selectedLang2.toUpperCase();
-
+        const label1 = data.lang1Label || lang1Label;
+        const label2 = data.lang2Label || lang2Label;
         document.getElementById('lang1Badge').textContent = label1;
         document.getElementById('lang2Badge').textContent = label2;
         document.getElementById('hudStatus').textContent =
             `${subtitles1.length} lignes ${label1} · ${subtitles2.length} lignes ${label2}`;
 
-        showPlayer(data.videoId);
-
-    } catch (err) {
-        console.error('[DualSub] Erreur fetch :', err);
-        showError('Impossible de joindre le serveur. Vérifiez que Spring Boot tourne sur le port 8080.');
-    } finally {
         setLoading(false);
-    }
+        hideProgress();
+        showPlayer(data.videoId);
+    });
+
+    sse.addEventListener('apierror', e => {
+        sseHandled = true;
+        sse.close();
+        const { error } = JSON.parse(e.data);
+        showError(error || 'Erreur lors du traitement de la vidéo.');
+        setLoading(false);
+        hideProgress();
+    });
+
+    sse.onerror = () => {
+        if (sseHandled) return;   // already handled via 'complete' or 'apierror'
+        sse.close();
+        console.error('[DualSub] Connexion SSE perdue');
+        showError('Impossible de joindre le serveur. Vérifiez que Spring Boot tourne sur le port 8080.');
+        setLoading(false);
+        hideProgress();
+    };
 }
 
 /* ─── YouTube Player ────────────────────────────────────────── */

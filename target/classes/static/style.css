@@ -605,6 +605,76 @@ body {
 }
 
 /* ══════════════════════════════════════════════════════════════
+   PROGRESS PANEL (SSE pipeline stepper)
+   ══════════════════════════════════════════════════════════════ */
+.progress-panel {
+    display: flex;
+    flex-direction: column;
+    gap: .5rem;
+    margin-top: .25rem;
+    padding: 1rem 1.2rem;
+    border: 1px solid rgba(0,255,136,.1);
+    border-radius: 6px;
+    background: rgba(0,255,136,.03);
+}
+
+.progress-step {
+    display: flex;
+    align-items: center;
+    gap: .9rem;
+    transition: opacity .25s;
+    opacity: .35;
+}
+.progress-step.done  { opacity: .6; }
+.progress-step.active { opacity: 1; }
+
+.step-icon {
+    width: 26px;
+    height: 26px;
+    flex-shrink: 0;
+    border-radius: 50%;
+    border: 1px solid #1a4a2e;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Orbitron', monospace;
+    font-size: .62rem;
+    font-weight: 700;
+    color: #1a4a2e;
+    transition: border-color .3s, color .3s, background .3s, box-shadow .3s;
+}
+.progress-step.done  .step-icon {
+    border-color: #006633;
+    background:   #006633;
+    color: #000;
+}
+.progress-step.done  .step-icon::after { content: '✓'; font-size: .7rem; }
+/* Hide the number once done — replaced by ✓ */
+.progress-step.done  .step-icon { font-size: 0; }
+.progress-step.done  .step-icon::after { font-size: .72rem; }
+
+.progress-step.active .step-icon {
+    border-color: var(--green);
+    color: var(--green);
+    animation: pulse-step 1.2s ease-in-out infinite;
+}
+
+@keyframes pulse-step {
+    0%,100% { box-shadow: 0 0 5px rgba(0,255,136,.3); }
+    50%      { box-shadow: 0 0 14px rgba(0,255,136,.8); }
+}
+
+.step-label {
+    font-family: 'Exo 2', sans-serif;
+    font-size: .8rem;
+    letter-spacing: .06em;
+    color: var(--txt-dim);
+    transition: color .25s;
+}
+.progress-step.active .step-label { color: var(--green); }
+.progress-step.done   .step-label { color: #3a8a5a; }
+
+/* ══════════════════════════════════════════════════════════════
    UTILITAIRES
    ══════════════════════════════════════════════════════════════ */
 .hidden { display: none !important; }
