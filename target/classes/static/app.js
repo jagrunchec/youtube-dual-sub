@@ -11,8 +11,137 @@ const LANG_LABELS = {
     it: 'Italiano', de: 'Deutsch'
 };
 
+/* ─── Internationalisation ───────────────────────────────────── */
+const I18N = {
+    fr: {
+        title:          'DualSub — Double Traduction YouTube',
+        tagline:        '// TRADUCTION SIMULTANÉE  ·  DOUBLE PISTE EN TEMPS RÉEL',
+        labelTarget:    '// CIBLE',
+        labelLangs:     '// LANGUES',
+        slotPrimary:    'LANGUE PRINCIPALE',
+        slotSecondary:  'LANGUE SECONDAIRE',
+        placeholder:    'https://www.youtube.com/watch?v=…',
+        btnAnalyze:     'ANALYSER & TRADUIRE',
+        btnLoading:     'TRADUCTION EN COURS…',
+        btnBack:        '◄  RETOUR',
+        errNoUrl:       'Veuillez saisir une URL YouTube.',
+        errServer:      'Impossible de joindre le serveur. Vérifiez que Spring Boot tourne sur le port 8080.',
+        stepTranscript: 'Récupération du transcript',
+        stepPunctuation:'Restauration de la ponctuation',
+        stepSentences:  'Découpage en phrases',
+        stepTranslation:'Traduction',
+        hudStatus:      (n1, l1, n2, l2) => `${n1} lignes ${l1} · ${n2} lignes ${l2}`,
+    },
+    en: {
+        title:          'DualSub — Dual YouTube Translation',
+        tagline:        '// SIMULTANEOUS TRANSLATION  ·  DUAL TRACK IN REAL TIME',
+        labelTarget:    '// TARGET',
+        labelLangs:     '// LANGUAGES',
+        slotPrimary:    'PRIMARY LANGUAGE',
+        slotSecondary:  'SECONDARY LANGUAGE',
+        placeholder:    'https://www.youtube.com/watch?v=…',
+        btnAnalyze:     'ANALYZE & TRANSLATE',
+        btnLoading:     'TRANSLATING…',
+        btnBack:        '◄  BACK',
+        errNoUrl:       'Please enter a YouTube URL.',
+        errServer:      'Cannot reach the server. Make sure Spring Boot is running on port 8080.',
+        stepTranscript: 'Fetching transcript',
+        stepPunctuation:'Restoring punctuation',
+        stepSentences:  'Splitting into sentences',
+        stepTranslation:'Translation',
+        hudStatus:      (n1, l1, n2, l2) => `${n1} lines ${l1} · ${n2} lines ${l2}`,
+    },
+    es: {
+        title:          'DualSub — Doble Traducción de YouTube',
+        tagline:        '// TRADUCCIÓN SIMULTÁNEA  ·  DOBLE PISTA EN TIEMPO REAL',
+        labelTarget:    '// OBJETIVO',
+        labelLangs:     '// IDIOMAS',
+        slotPrimary:    'IDIOMA PRINCIPAL',
+        slotSecondary:  'IDIOMA SECUNDARIO',
+        placeholder:    'https://www.youtube.com/watch?v=…',
+        btnAnalyze:     'ANALIZAR Y TRADUCIR',
+        btnLoading:     'TRADUCIENDO…',
+        btnBack:        '◄  VOLVER',
+        errNoUrl:       'Por favor, introduce una URL de YouTube.',
+        errServer:      'No se puede conectar al servidor. Verifica que Spring Boot esté en el puerto 8080.',
+        stepTranscript: 'Obteniendo transcripción',
+        stepPunctuation:'Restaurando puntuación',
+        stepSentences:  'Dividiendo en frases',
+        stepTranslation:'Traducción',
+        hudStatus:      (n1, l1, n2, l2) => `${n1} líneas ${l1} · ${n2} líneas ${l2}`,
+    },
+    it: {
+        title:          'DualSub — Doppia Traduzione YouTube',
+        tagline:        '// TRADUZIONE SIMULTANEA  ·  DOPPIA TRACCIA IN TEMPO REALE',
+        labelTarget:    '// DESTINAZIONE',
+        labelLangs:     '// LINGUE',
+        slotPrimary:    'LINGUA PRINCIPALE',
+        slotSecondary:  'LINGUA SECONDARIA',
+        placeholder:    'https://www.youtube.com/watch?v=…',
+        btnAnalyze:     'ANALIZZA E TRADUCI',
+        btnLoading:     'TRADUZIONE IN CORSO…',
+        btnBack:        '◄  INDIETRO',
+        errNoUrl:       'Inserisci un URL di YouTube.',
+        errServer:      'Impossibile raggiungere il server. Verifica che Spring Boot sia sulla porta 8080.',
+        stepTranscript: 'Recupero trascrizione',
+        stepPunctuation:'Ripristino punteggiatura',
+        stepSentences:  'Suddivisione in frasi',
+        stepTranslation:'Traduzione',
+        hudStatus:      (n1, l1, n2, l2) => `${n1} righe ${l1} · ${n2} righe ${l2}`,
+    },
+    de: {
+        title:          'DualSub — Doppelte YouTube-Übersetzung',
+        tagline:        '// SIMULTANÜBERSETZUNG  ·  DOPPELSPUR IN ECHTZEIT',
+        labelTarget:    '// ZIEL',
+        labelLangs:     '// SPRACHEN',
+        slotPrimary:    'HAUPTSPRACHE',
+        slotSecondary:  'NEBENSPRACHE',
+        placeholder:    'https://www.youtube.com/watch?v=…',
+        btnAnalyze:     'ANALYSIEREN & ÜBERSETZEN',
+        btnLoading:     'ÜBERSETZUNG LÄUFT…',
+        btnBack:        '◄  ZURÜCK',
+        errNoUrl:       'Bitte eine YouTube-URL eingeben.',
+        errServer:      'Server nicht erreichbar. Prüfe, ob Spring Boot auf Port 8080 läuft.',
+        stepTranscript: 'Transkript abrufen',
+        stepPunctuation:'Zeichensetzung wiederherstellen',
+        stepSentences:  'In Sätze aufteilen',
+        stepTranslation:'Übersetzung',
+        hudStatus:      (n1, l1, n2, l2) => `${n1} Zeilen ${l1} · ${n2} Zeilen ${l2}`,
+    },
+};
+
+function detectLang() {
+    const supported = Object.keys(I18N);
+    const prefs = (navigator.languages && navigator.languages.length)
+        ? navigator.languages : [navigator.language || 'fr'];
+    for (const pref of prefs) {
+        const code = pref.split('-')[0].toLowerCase();
+        if (supported.includes(code)) return code;
+    }
+    return 'fr';
+}
+
+const uiLang = detectLang();
+
+function applyI18n() {
+    const t = I18N[uiLang];
+    document.title = t.title;
+    document.documentElement.lang = uiLang;
+    document.getElementById('tagline').textContent        = t.tagline;
+    // labelTarget contains a blink span — rebuild the HTML safely
+    document.getElementById('labelTarget').innerHTML =
+        t.labelTarget + '  <span class="blink">_</span>';
+    document.getElementById('labelLangs').textContent     = t.labelLangs;
+    document.getElementById('slotPrimary').textContent    = t.slotPrimary;
+    document.getElementById('slotSecondary').textContent  = t.slotSecondary;
+    document.getElementById('videoUrl').placeholder       = t.placeholder;
+    document.getElementById('btnText').textContent        = t.btnAnalyze;
+    document.getElementById('btnBack').textContent        = t.btnBack;
+}
+
 /* ─── Boot ──────────────────────────────────────────────────── */
 document.addEventListener('DOMContentLoaded', () => {
+    applyI18n();
     document.getElementById('videoUrl').addEventListener('keydown', e => {
         if (e.key === 'Enter') processVideo();
     });
@@ -31,16 +160,20 @@ function pick(row, code, btn) {
 
 /* ─── Pipeline steps (for SSE progress display) ─────────────── */
 const PIPELINE_STEPS = [
-    { key: 'transcript',   label: 'Récupération du transcript' },
-    { key: 'punctuation',  label: 'Restauration de la ponctuation' },
-    { key: 'sentences',    label: 'Découpage en phrases' },
-    { key: 'translation1', label: '' },   // filled dynamically from lang labels
+    { key: 'transcript',   label: '' },
+    { key: 'punctuation',  label: '' },
+    { key: 'sentences',    label: '' },
+    { key: 'translation1', label: '' },
     { key: 'translation2', label: '' },
 ];
 
 function initProgress(lang1Label, lang2Label) {
-    PIPELINE_STEPS[3].label = 'Traduction ' + lang1Label;
-    PIPELINE_STEPS[4].label = 'Traduction ' + lang2Label;
+    const t = I18N[uiLang];
+    PIPELINE_STEPS[0].label = t.stepTranscript;
+    PIPELINE_STEPS[1].label = t.stepPunctuation;
+    PIPELINE_STEPS[2].label = t.stepSentences;
+    PIPELINE_STEPS[3].label = t.stepTranslation + ' ' + lang1Label;
+    PIPELINE_STEPS[4].label = t.stepTranslation + ' ' + lang2Label;
 
     const panel = document.getElementById('progressPanel');
     panel.innerHTML = PIPELINE_STEPS.map((s, i) => `
@@ -69,8 +202,9 @@ function hideProgress() {
 
 /* ─── Process video ─────────────────────────────────────────── */
 function processVideo() {
+    const t   = I18N[uiLang];
     const url = document.getElementById('videoUrl').value.trim();
-    if (!url) { showError('Veuillez saisir une URL YouTube.'); return; }
+    if (!url) { showError(t.errNoUrl); return; }
 
     hideError();
     setLoading(true);
@@ -97,17 +231,17 @@ function processVideo() {
         subtitles2 = data.subtitles2 || [];
 
         // ── Diagnostic console ────────────────────────────────
-        console.log('[DualSub] Réponse reçue :');
+        console.log('[DualSub] Response received:');
         console.log('  videoId   :', data.videoId);
-        console.log('  lang1     :', data.lang1Label, '→', subtitles1.length, 'sous-titres');
-        console.log('  lang2     :', data.lang2Label, '→', subtitles2.length, 'sous-titres');
+        console.log('  lang1     :', data.lang1Label, '→', subtitles1.length, 'subtitles');
+        console.log('  lang2     :', data.lang2Label, '→', subtitles2.length, 'subtitles');
         if (subtitles1.length > 0) {
-            console.log('  1er sous-titre [' + data.lang1Label + '] :', subtitles1[0]);
-            console.log('  Der sous-titre [' + data.lang1Label + '] :', subtitles1[subtitles1.length - 1]);
-        } else { console.warn('  ⚠ subtitles1 est VIDE'); }
+            console.log('  first [' + data.lang1Label + '] :', subtitles1[0]);
+            console.log('  last  [' + data.lang1Label + '] :', subtitles1[subtitles1.length - 1]);
+        } else { console.warn('  ⚠ subtitles1 is EMPTY'); }
         if (subtitles2.length > 0) {
-            console.log('  1er sous-titre [' + data.lang2Label + '] :', subtitles2[0]);
-        } else { console.warn('  ⚠ subtitles2 est VIDE'); }
+            console.log('  first [' + data.lang2Label + '] :', subtitles2[0]);
+        } else { console.warn('  ⚠ subtitles2 is EMPTY'); }
         // ────────────────────────────────────────────────────
 
         const label1 = data.lang1Label || lang1Label;
@@ -115,7 +249,7 @@ function processVideo() {
         document.getElementById('lang1Badge').textContent = label1;
         document.getElementById('lang2Badge').textContent = label2;
         document.getElementById('hudStatus').textContent =
-            `${subtitles1.length} lignes ${label1} · ${subtitles2.length} lignes ${label2}`;
+            t.hudStatus(subtitles1.length, label1, subtitles2.length, label2);
 
         setLoading(false);
         hideProgress();
@@ -126,7 +260,7 @@ function processVideo() {
         sseHandled = true;
         sse.close();
         const { error } = JSON.parse(e.data);
-        showError(error || 'Erreur lors du traitement de la vidéo.');
+        showError(error || t.errServer);
         setLoading(false);
         hideProgress();
     });
@@ -134,8 +268,8 @@ function processVideo() {
     sse.onerror = () => {
         if (sseHandled) return;   // already handled via 'complete' or 'apierror'
         sse.close();
-        console.error('[DualSub] Connexion SSE perdue');
-        showError('Impossible de joindre le serveur. Vérifiez que Spring Boot tourne sur le port 8080.');
+        console.error('[DualSub] SSE connection lost');
+        showError(t.errServer);
         setLoading(false);
         hideProgress();
     };
@@ -146,11 +280,9 @@ function showPlayer(videoId) {
     document.getElementById('configPanel').classList.add('hidden');
     document.getElementById('playerSection').classList.remove('hidden');
 
-    // Trier pour garantir la recherche binaire
     subtitles1.sort((a, b) => a.startMs - b.startMs);
     subtitles2.sort((a, b) => a.startMs - b.startMs);
 
-    // Démarrage immédiat de la synchro
     startSync();
 
     if (player) {
@@ -164,7 +296,7 @@ function showPlayer(videoId) {
         videoId,
         playerVars: { playsinline: 1, rel: 0, modestbranding: 1 },
         events: {
-            onReady:       () => { console.log('[DualSub] Lecteur YouTube prêt'); },
+            onReady:       () => { console.log('[DualSub] Player ready'); },
             onStateChange: onPlayerStateChange,
         }
     });
@@ -172,12 +304,11 @@ function showPlayer(videoId) {
 
 function onPlayerStateChange(ev) {
     const states = { '-1':'UNSTARTED', 0:'ENDED', 1:'PLAYING', 2:'PAUSED', 3:'BUFFERING', 5:'CUED' };
-    console.log('[DualSub] État lecteur :', states[ev.data] || ev.data);
+    console.log('[DualSub] Player state:', states[ev.data] || ev.data);
 
     if (ev.data === YT.PlayerState.ENDED) {
         stopSync();
     } else if (!syncInterval) {
-        // Relancer si la synchro a été stoppée (ne devrait pas arriver)
         startSync();
     }
 }
@@ -185,7 +316,6 @@ function onPlayerStateChange(ev) {
 function startSync() {
     stopSync();
     syncInterval = setInterval(syncSubtitles, 100);
-    console.log('[DualSub] Synchro démarrée');
 }
 function stopSync() {
     if (syncInterval) {
@@ -206,7 +336,6 @@ function syncSubtitles() {
     document.getElementById('subtitleText1').textContent = t1;
     document.getElementById('subtitleText2').textContent = t2;
 
-    // Afficher l'heure courante dans le debug
     document.getElementById('hudTime').textContent = formatMs(nowMs);
 }
 
@@ -255,10 +384,9 @@ function resetApp() {
 
 /* ─── UI helpers ────────────────────────────────────────────── */
 function setLoading(on) {
-    const btn = document.getElementById('btnProcess');
-    btn.disabled = on;
-    document.getElementById('btnText').textContent =
-        on ? 'TRADUCTION EN COURS…' : 'ANALYSER & TRADUIRE';
+    const t = I18N[uiLang];
+    document.getElementById('btnProcess').disabled = on;
+    document.getElementById('btnText').textContent = on ? t.btnLoading : t.btnAnalyze;
     document.getElementById('btnSpinner').classList.toggle('hidden', !on);
 }
 

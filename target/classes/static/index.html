@@ -23,7 +23,7 @@
             <span class="logo-play">▶</span>
             <span class="logo-dual">DUAL</span><span class="logo-sub">SUB</span>
         </div>
-        <p class="tagline">// TRADUCTION SIMULTANÉE &nbsp;·&nbsp; DOUBLE PISTE EN TEMPS RÉEL</p>
+        <p class="tagline" id="tagline">// TRADUCTION SIMULTANÉE &nbsp;·&nbsp; DOUBLE PISTE EN TEMPS RÉEL</p>
         <div class="header-line"></div>
     </header>
 
@@ -38,7 +38,7 @@
 
         <!-- URL -->
         <div class="block">
-            <p class="block-label">&#x2215;&#x2215; CIBLE &nbsp;<span class="blink">_</span></p>
+            <p class="block-label" id="labelTarget">&#x2215;&#x2215; CIBLE &nbsp;<span class="blink">_</span></p>
             <div class="url-row">
                 <span class="url-icon">▶</span>
                 <input type="text" id="videoUrl" autocomplete="off" spellcheck="false"
@@ -48,14 +48,14 @@
 
         <!-- Sélecteurs de langue -->
         <div class="block">
-            <p class="block-label">&#x2215;&#x2215; LANGUES</p>
+            <p class="block-label" id="labelLangs">&#x2215;&#x2215; LANGUES</p>
             <div class="langs-grid">
 
                 <!-- Langue 1 — verte -->
                 <div class="lang-slot">
                     <div class="slot-header green-header">
                         <span class="slot-num">01</span>
-                        <span class="slot-name">LANGUE PRINCIPALE</span>
+                        <span class="slot-name" id="slotPrimary">LANGUE PRINCIPALE</span>
                         <span class="slot-dot green-dot"></span>
                     </div>
                     <div class="flag-row" id="row1">
@@ -91,7 +91,7 @@
                 <div class="lang-slot">
                     <div class="slot-header orange-header">
                         <span class="slot-num">02</span>
-                        <span class="slot-name">LANGUE SECONDAIRE</span>
+                        <span class="slot-name" id="slotSecondary">LANGUE SECONDAIRE</span>
                         <span class="slot-dot orange-dot"></span>
                     </div>
                     <div class="flag-row" id="row2">
@@ -176,7 +176,7 @@
             </div>
         </div>
 
-        <button class="btn-back" onclick="resetApp()">◄ &nbsp;RETOUR</button>
+        <button class="btn-back" id="btnBack" onclick="resetApp()">◄ &nbsp;RETOUR</button>
 
     </section>
 
