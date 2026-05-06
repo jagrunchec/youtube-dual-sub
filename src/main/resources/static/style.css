@@ -297,6 +297,7 @@ body {
 /* Rangée de drapeaux */
 .flag-row {
     display: flex;
+    flex-wrap: wrap;
     gap: .6rem;
     padding: .85rem 1rem;
     flex-wrap: wrap;
