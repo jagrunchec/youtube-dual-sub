@@ -16,6 +16,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.function.Consumer;
 
 @RestController
@@ -157,32 +158,33 @@ public class VideoController {
                     return;
                 }
 
-                // Stage 4: track 1
-                // When lang1="auto" (immersion mode), serve source entries without any translation.
+                // Stages 4 & 5: translate both tracks in parallel.
+                // When lang1="auto" (immersion mode), track 1 is served as-is (no network call).
                 final boolean lang1Auto = "auto".equals(lang1);
-                String lang1Label;
-                List<SubtitleEntry> subtitles1;
-                if (lang1Auto) {
-                    progress.accept("{\"step\":\"translation1\"}");
-                    subtitles1 = original;   // source language as-is — no network call needed
-                    String detectedCode = transcript.languageCode;
-                    lang1Label = (detectedCode != null)
-                        ? TranslationService.LANGUAGES.getOrDefault(
-                              detectedCode, detectedCode.toUpperCase())
-                        : "Source";
-                } else {
-                    lang1Label = TranslationService.LANGUAGES.getOrDefault(lang1, lang1);
-                    progress.accept("{\"step\":\"translation1\"}");
-                    subtitles1 = translationService.translate(original, lang1);
-                }
+                final String detectedCode = transcript.languageCode;
 
-                // Stage 5: track 2 (always a real language code)
-                String lang2Label = TranslationService.LANGUAGES.getOrDefault(lang2, lang2);
+                final String lang1Label = lang1Auto
+                    ? (detectedCode != null
+                        ? TranslationService.LANGUAGES.getOrDefault(detectedCode, detectedCode.toUpperCase())
+                        : "Source")
+                    : TranslationService.LANGUAGES.getOrDefault(lang1, lang1);
+                final String lang2Label = TranslationService.LANGUAGES.getOrDefault(lang2, lang2);
+
+                // Submit both translation tasks concurrently before waiting on either result.
+                Future<List<SubtitleEntry>> future1 = executor.submit(() ->
+                    lang1Auto ? original : translationService.translate(original, lang1));
+                Future<List<SubtitleEntry>> future2 = executor.submit(() ->
+                    translationService.translate(original, lang2));
+
+                // Notify the browser that both translation steps have started.
+                progress.accept("{\"step\":\"translation1\"}");
                 progress.accept("{\"step\":\"translation2\"}");
-                List<SubtitleEntry> subtitles2 = translationService.translate(original, lang2);
+
+                List<SubtitleEntry> subtitles1 = future1.get();
+                List<SubtitleEntry> subtitles2 = future2.get();
 
                 System.out.println("[Stream] Done: " + subtitles1.size()
-                    + " [" + (lang1Auto ? "auto→" + transcript.languageCode : lang1) + "] / "
+                    + " [" + (lang1Auto ? "auto→" + detectedCode : lang1) + "] / "
                     + subtitles2.size() + " [" + lang2 + "]");
 
                 ProcessResponse resp = new ProcessResponse();
