@@ -6,6 +6,8 @@ let subtitles2      = [];
 let player          = null;
 let syncInterval    = null;
 let immersionMode   = false;
+let progressTimer   = null;   // setInterval handle for the per-step elapsed timer
+let stepElapsed     = 0;      // seconds elapsed since the current step started
 
 const LANG_LABELS = {
     fr: 'Français', en: 'English', es: 'Español',
@@ -208,11 +210,11 @@ function pick(row, code, btn) {
 
 /* ─── Pipeline steps (for SSE progress display) ─────────────── */
 const PIPELINE_STEPS = [
-    { key: 'transcript',   label: '' },
-    { key: 'punctuation',  label: '' },
-    { key: 'sentences',    label: '' },
-    { key: 'translation1', label: '' },
-    { key: 'translation2', label: '' },
+    { key: 'transcript',   label: '', color: '#00d4ff' },   // cyan
+    { key: 'punctuation',  label: '', color: '#a855f7' },   // purple
+    { key: 'sentences',    label: '', color: '#ff7b00' },   // orange
+    { key: 'translation1', label: '', color: '#00ff88' },   // green
+    { key: 'translation2', label: '', color: '#00ff88' },   // green
 ];
 
 function initProgress(lang1Label, lang2Label) {
@@ -224,27 +226,53 @@ function initProgress(lang1Label, lang2Label) {
     PIPELINE_STEPS[4].label = t.stepTranslation + ' ' + lang2Label;
 
     const panel = document.getElementById('progressPanel');
-    panel.innerHTML = PIPELINE_STEPS.map((s, i) => `
-        <div class="progress-step" id="pstep-${s.key}">
-            <div class="step-icon">${i + 1}</div>
-            <span class="step-label">${s.label}</span>
-        </div>`).join('');
+    panel.innerHTML = `
+        <div class="prog-row">
+            <span class="prog-spin"></span>
+            <span class="prog-label" id="progLabel">…</span>
+            <span class="prog-timer" id="progTimer">0 s</span>
+        </div>
+        <div class="prog-bar-track">
+            <div class="prog-bar-fill" id="progBar"></div>
+        </div>`;
     panel.classList.remove('hidden');
 }
 
 function updateStep(stepKey) {
-    const keys = PIPELINE_STEPS.map(s => s.key);
-    const idx  = keys.indexOf(stepKey);
-    keys.forEach((k, i) => {
-        const el = document.getElementById('pstep-' + k);
-        if (!el) return;
-        el.classList.remove('active', 'done');
-        if (i < idx)  el.classList.add('done');
-        if (i === idx) el.classList.add('active');
-    });
+    const keys  = PIPELINE_STEPS.map(s => s.key);
+    const idx   = keys.indexOf(stepKey);
+    const step  = PIPELINE_STEPS[idx];
+    if (!step) return;
+
+    // Apply the step colour to the panel via a CSS custom property
+    document.getElementById('progressPanel').style.setProperty('--prog-color', step.color);
+
+    // Update the active step label
+    const labelEl = document.getElementById('progLabel');
+    if (labelEl) labelEl.textContent = step.label;
+
+    // Advance the progress bar: steps fill up to ~83%; complete pushes to 100%
+    // Using (idx+1)/(total+1) reserves the last segment for the 'complete' event
+    const pct = Math.round(((idx + 1) / (PIPELINE_STEPS.length + 1)) * 100);
+    const barEl = document.getElementById('progBar');
+    if (barEl) barEl.style.width = pct + '%';
+
+    // Reset and restart the per-step elapsed timer
+    clearInterval(progressTimer);
+    stepElapsed = 0;
+    const timerEl = document.getElementById('progTimer');
+    if (timerEl) timerEl.textContent = '0 s';
+    progressTimer = setInterval(() => {
+        stepElapsed++;
+        const el = document.getElementById('progTimer');
+        if (el) el.textContent = stepElapsed + ' s';
+    }, 1000);
 }
 
 function hideProgress() {
+    clearInterval(progressTimer);
+    progressTimer = null;
+    stepElapsed   = 0;
     document.getElementById('progressPanel').classList.add('hidden');
 }
 
@@ -276,6 +304,9 @@ function processVideo() {
     sse.addEventListener('complete', e => {
         sseHandled = true;
         sse.close();
+        // Flash the bar to 100% before hiding the panel
+        const barEl = document.getElementById('progBar');
+        if (barEl) barEl.style.width = '100%';
         const data = JSON.parse(e.data);
 
         subtitles1 = data.subtitles1 || [];
