@@ -3,6 +3,7 @@ package com.dualsub.controller;
 import com.dualsub.model.ProcessRequest;
 import com.dualsub.model.ProcessResponse;
 import com.dualsub.model.SubtitleEntry;
+import com.dualsub.service.PersistenceService;
 import com.dualsub.service.TranslationService;
 import com.dualsub.service.YouTubeTranscriptService;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -14,6 +15,7 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -25,13 +27,16 @@ public class VideoController {
 
     private final YouTubeTranscriptService youTubeService;
     private final TranslationService translationService;
+    private final PersistenceService persistenceService;
     private final ExecutorService executor = Executors.newCachedThreadPool();
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     public VideoController(YouTubeTranscriptService youTubeService,
-                           TranslationService translationService) {
-        this.youTubeService = youTubeService;
+                           TranslationService translationService,
+                           PersistenceService persistenceService) {
+        this.youTubeService     = youTubeService;
         this.translationService = translationService;
+        this.persistenceService = persistenceService;
     }
 
     @GetMapping("/languages")
@@ -75,7 +80,6 @@ public class VideoController {
     /**
      * Tests YouTube's tlang parameter for a given video.
      * Returns up to 5 sample subtitles per language to verify translation quality.
-     * Usage: GET /api/poc/tlang?videoId=VIDEO_ID
      */
     @GetMapping("/poc/tlang")
     public ResponseEntity<?> pocTlang(
@@ -84,7 +88,6 @@ public class VideoController {
             Map<String, Object> result = new LinkedHashMap<>();
             result.put("videoId", videoId);
 
-            // Resolve the base caption URL once
             String baseUrl = youTubeService.fetchCaptionBaseUrl(videoId);
             if (baseUrl == null) {
                 return ResponseEntity.ok(Map.of(
@@ -96,7 +99,6 @@ public class VideoController {
             result.put("captionBaseUrl", cleanBase.length() > 150
                 ? cleanBase.substring(0, 150) + "…" : cleanBase);
 
-            // Test tlang for each language (delay between calls to avoid 429)
             Map<String, Object> langs = new LinkedHashMap<>();
             for (String lang : List.of("fr", "en", "es", "it", "de")) {
                 try {
@@ -121,10 +123,12 @@ public class VideoController {
 
     /**
      * SSE endpoint: streams pipeline progress then the final result.
-     * Stages emitted: transcript → punctuation → sentences → translation1 → translation2 → complete.
+     *
+     * When the transcript is already cached, the punctuation and sentences stages are
+     * skipped and a single "transcript" event with cached=true is emitted instead,
+     * allowing the browser to jump directly to the translation steps.
      *
      * Using GET (not POST) because EventSource only supports GET requests.
-     * Parameters are passed as query strings; Spring URL-decodes them automatically.
      */
     @GetMapping(value = "/process/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public SseEmitter processStream(
@@ -145,11 +149,33 @@ public class VideoController {
                 System.out.println("[Stream] Processing: " + videoId
                     + " | lang1=" + lang1 + " lang2=" + lang2);
 
-                // Stage 1: transcript (Python script + merge + punctuation + sentences)
-                progress.accept("{\"step\":\"transcript\"}");
-                YouTubeTranscriptService.TranscriptResult transcript =
-                    youTubeService.fetchTranscriptFull(videoId, progress);
-                List<SubtitleEntry> original = transcript.entries;
+                // ── Stage 1: transcript ───────────────────────────────────────
+                // Check the transcript cache first to skip the slow Python pipeline.
+                List<SubtitleEntry> original;
+                String detectedCode;
+
+                Optional<YouTubeTranscriptService.TranscriptResult> cachedResult =
+                    persistenceService.getCachedTranscript(videoId);
+
+                if (cachedResult.isPresent()) {
+                    // Cache HIT — skip Python, punctuation, and sentence-split stages
+                    progress.accept("{\"step\":\"transcript\",\"cached\":true}");
+                    original     = cachedResult.get().entries;
+                    detectedCode = cachedResult.get().languageCode;
+                    System.out.println("[Stream] Transcript cache HIT: " + videoId
+                        + " (" + original.size() + " entries)");
+                } else {
+                    // Cache MISS — run the full pipeline (emits punctuation + sentences internally)
+                    progress.accept("{\"step\":\"transcript\"}");
+                    YouTubeTranscriptService.TranscriptResult transcript =
+                        youTubeService.fetchTranscriptFull(videoId, progress);
+                    original     = transcript.entries;
+                    detectedCode = transcript.languageCode;
+
+                    if (!original.isEmpty()) {
+                        persistenceService.cacheTranscript(videoId, transcript);
+                    }
+                }
 
                 if (original.isEmpty()) {
                     emitter.send(SseEmitter.event().name("apierror").data(
@@ -158,10 +184,9 @@ public class VideoController {
                     return;
                 }
 
-                // Stages 4 & 5: translate both tracks in parallel.
-                // When lang1="auto" (immersion mode), track 1 is served as-is (no network call).
-                final boolean lang1Auto = "auto".equals(lang1);
-                final String detectedCode = transcript.languageCode;
+                // ── Stages 4 & 5: translate both tracks in parallel ───────────
+                final boolean lang1Auto    = "auto".equals(lang1);
+                final String  finalDetCode = detectedCode;
 
                 final String lang1Label = lang1Auto
                     ? (detectedCode != null
@@ -170,23 +195,62 @@ public class VideoController {
                     : TranslationService.LANGUAGES.getOrDefault(lang1, lang1);
                 final String lang2Label = TranslationService.LANGUAGES.getOrDefault(lang2, lang2);
 
-                // Submit both translation tasks concurrently before waiting on either result.
-                Future<List<SubtitleEntry>> future1 = executor.submit(() ->
-                    lang1Auto ? original : translationService.translate(original, lang1));
-                Future<List<SubtitleEntry>> future2 = executor.submit(() ->
-                    translationService.translate(original, lang2));
+                // Check translation caches before submitting tasks
+                final Optional<List<SubtitleEntry>> translCached1 = lang1Auto
+                    ? Optional.empty()
+                    : persistenceService.getCachedTranslation(videoId, lang1);
+                final Optional<List<SubtitleEntry>> translCached2 =
+                    persistenceService.getCachedTranslation(videoId, lang2);
 
-                // Notify the browser that both translation steps have started.
-                progress.accept("{\"step\":\"translation1\"}");
-                progress.accept("{\"step\":\"translation2\"}");
+                // Make original effectively final for lambda capture
+                final List<SubtitleEntry> originalEntries = original;
+
+                // Submit both tasks: cache hit = immediate return, miss = Google Translate
+                Future<List<SubtitleEntry>> future1 = executor.submit(() -> {
+                    if (lang1Auto) return originalEntries;
+                    return translCached1.orElseGet(() -> {
+                        try { return translationService.translate(originalEntries, lang1); }
+                        catch (InterruptedException e) { Thread.currentThread().interrupt(); return originalEntries; }
+                    });
+                });
+                Future<List<SubtitleEntry>> future2 = executor.submit(() ->
+                    translCached2.orElseGet(() -> {
+                        try { return translationService.translate(originalEntries, lang2); }
+                        catch (InterruptedException e) { Thread.currentThread().interrupt(); return originalEntries; }
+                    })
+                );
+
+                // Emit progress with cache status per track
+                progress.accept("{\"step\":\"translation1\",\"cached\":"
+                    + translCached1.isPresent() + "}");
+                progress.accept("{\"step\":\"translation2\",\"cached\":"
+                    + translCached2.isPresent() + "}");
 
                 List<SubtitleEntry> subtitles1 = future1.get();
                 List<SubtitleEntry> subtitles2 = future2.get();
 
                 System.out.println("[Stream] Done: " + subtitles1.size()
-                    + " [" + (lang1Auto ? "auto→" + detectedCode : lang1) + "] / "
-                    + subtitles2.size() + " [" + lang2 + "]");
+                    + " [" + (lang1Auto ? "auto→" + finalDetCode : lang1)
+                    + (translCached1.isPresent() ? " (cached)" : "") + "] / "
+                    + subtitles2.size() + " [" + lang2 + "]"
+                    + (translCached2.isPresent() ? " (cached)" : ""));
 
+                // Persist new translations to cache (async, non-blocking)
+                if (!lang1Auto && translCached1.isEmpty()) {
+                    final List<SubtitleEntry> s1 = subtitles1;
+                    executor.submit(() -> persistenceService.cacheTranslation(videoId, lang1, s1));
+                }
+                if (translCached2.isEmpty()) {
+                    final List<SubtitleEntry> s2 = subtitles2;
+                    executor.submit(() -> persistenceService.cacheTranslation(videoId, lang2, s2));
+                }
+
+                // ── Record watch history (best-effort, non-blocking for SSE) ──
+                final String effectiveLang1 = lang1Auto ? "auto" : lang1;
+                executor.submit(() ->
+                    persistenceService.recordWatch(videoId, effectiveLang1, lang2));
+
+                // ── Send complete event ───────────────────────────────────────
                 ProcessResponse resp = new ProcessResponse();
                 resp.setVideoId(videoId);
                 resp.setSubtitles1(subtitles1);
@@ -216,6 +280,7 @@ public class VideoController {
         try { emitter.complete(); } catch (Exception ignored) {}
     }
 
+    /** Legacy synchronous endpoint — not used by the current frontend. */
     @PostMapping("/process")
     public ResponseEntity<?> processVideo(@RequestBody ProcessRequest request) {
         try {
@@ -223,7 +288,6 @@ public class VideoController {
             System.out.println("[Controller] Processing video: " + videoId
                 + " | lang1=" + request.getLang1() + " lang2=" + request.getLang2());
 
-            // Fetch source transcript via Python (youtube-transcript-api)
             List<SubtitleEntry> original = youTubeService.fetchTranscript(videoId);
             System.out.println("[Controller] Source transcript: " + original.size() + " entries");
 
@@ -234,12 +298,8 @@ public class VideoController {
                 ));
             }
 
-            // Translate to both selected languages via Google Translate
             List<SubtitleEntry> subtitles1 = translationService.translate(original, request.getLang1());
             List<SubtitleEntry> subtitles2 = translationService.translate(original, request.getLang2());
-            System.out.println("[Controller] Translation done: "
-                + subtitles1.size() + " [" + request.getLang1() + "] / "
-                + subtitles2.size() + " [" + request.getLang2() + "]");
 
             ProcessResponse resp = new ProcessResponse();
             resp.setVideoId(videoId);

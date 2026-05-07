@@ -8,6 +8,7 @@ let syncInterval    = null;
 let immersionMode   = false;
 let progressTimer   = null;   // setInterval handle for the per-step elapsed timer
 let stepElapsed     = 0;      // seconds elapsed since the current step started
+let historyExpanded = true;   // whether the history panel is expanded
 
 const LANG_LABELS = {
     fr: 'Français', en: 'English', es: 'Español',
@@ -18,7 +19,7 @@ const LANG_LABELS = {
 const I18N = {
     fr: {
         title:          'DualSub — Double Traduction YouTube',
-        tagline:        '// TRADUCTION SIMULTANÉE  ·  DOUBLE PISTE EN TEMPS RÉEL',
+        tagline:        '// TRADUCTION SIMULTANÉE  ·  DOUBLE PISTE EN TEMPS RÉEL',
         labelTarget:    '// CIBLE',
         labelLangs:     '// LANGUES',
         slotPrimary:    'LANGUE PRINCIPALE',
@@ -26,7 +27,7 @@ const I18N = {
         placeholder:    'https://www.youtube.com/watch?v=…',
         btnAnalyze:     'ANALYSER & TRADUIRE',
         btnLoading:     'TRADUCTION EN COURS…',
-        btnBack:        '◄  RETOUR',
+        btnBack:        '◄  RETOUR',
         errNoUrl:       'Veuillez saisir une URL YouTube.',
         errServer:      'Impossible de joindre le serveur. Vérifiez que Spring Boot tourne sur le port 8080.',
         stepTranscript: 'Récupération du transcript',
@@ -34,13 +35,16 @@ const I18N = {
         stepSentences:  'Découpage en phrases',
         stepTranslation:'Traduction',
         stepSourceAuto: 'Piste 1 : langue source',
+        stepCached:     'Transcript en cache ⚡',
         immLabel:       'MODE IMMERSION',
         immHint:        'langue de la vidéo · ma langue',
+        labelHistory:   '// HISTORIQUE',
+        histEmpty:      'Aucune vidéo regardée',
         hudStatus:      (n1, l1, n2, l2) => `${n1} lignes ${l1} · ${n2} lignes ${l2}`,
     },
     en: {
         title:          'DualSub — Dual YouTube Translation',
-        tagline:        '// SIMULTANEOUS TRANSLATION  ·  DUAL TRACK IN REAL TIME',
+        tagline:        '// SIMULTANEOUS TRANSLATION  ·  DUAL TRACK IN REAL TIME',
         labelTarget:    '// TARGET',
         labelLangs:     '// LANGUAGES',
         slotPrimary:    'PRIMARY LANGUAGE',
@@ -48,7 +52,7 @@ const I18N = {
         placeholder:    'https://www.youtube.com/watch?v=…',
         btnAnalyze:     'ANALYZE & TRANSLATE',
         btnLoading:     'TRANSLATING…',
-        btnBack:        '◄  BACK',
+        btnBack:        '◄  BACK',
         errNoUrl:       'Please enter a YouTube URL.',
         errServer:      'Cannot reach the server. Make sure Spring Boot is running on port 8080.',
         stepTranscript: 'Fetching transcript',
@@ -56,13 +60,16 @@ const I18N = {
         stepSentences:  'Splitting into sentences',
         stepTranslation:'Translation',
         stepSourceAuto: 'Track 1: source language',
+        stepCached:     'Transcript from cache ⚡',
         immLabel:       'IMMERSION MODE',
         immHint:        'video language · my language',
+        labelHistory:   '// HISTORY',
+        histEmpty:      'No videos watched yet',
         hudStatus:      (n1, l1, n2, l2) => `${n1} lines ${l1} · ${n2} lines ${l2}`,
     },
     es: {
         title:          'DualSub — Doble Traducción de YouTube',
-        tagline:        '// TRADUCCIÓN SIMULTÁNEA  ·  DOBLE PISTA EN TIEMPO REAL',
+        tagline:        '// TRADUCCIÓN SIMULTÁNEA  ·  DOBLE PISTA EN TIEMPO REAL',
         labelTarget:    '// OBJETIVO',
         labelLangs:     '// IDIOMAS',
         slotPrimary:    'IDIOMA PRINCIPAL',
@@ -70,7 +77,7 @@ const I18N = {
         placeholder:    'https://www.youtube.com/watch?v=…',
         btnAnalyze:     'ANALIZAR Y TRADUCIR',
         btnLoading:     'TRADUCIENDO…',
-        btnBack:        '◄  VOLVER',
+        btnBack:        '◄  VOLVER',
         errNoUrl:       'Por favor, introduce una URL de YouTube.',
         errServer:      'No se puede conectar al servidor. Verifica que Spring Boot esté en el puerto 8080.',
         stepTranscript: 'Obteniendo transcripción',
@@ -78,13 +85,16 @@ const I18N = {
         stepSentences:  'Dividiendo en frases',
         stepTranslation:'Traducción',
         stepSourceAuto: 'Pista 1: idioma fuente',
+        stepCached:     'Transcripción en caché ⚡',
         immLabel:       'MODO INMERSIÓN',
         immHint:        'idioma del vídeo · mi idioma',
+        labelHistory:   '// HISTORIAL',
+        histEmpty:      'No hay vídeos vistos aún',
         hudStatus:      (n1, l1, n2, l2) => `${n1} líneas ${l1} · ${n2} líneas ${l2}`,
     },
     it: {
         title:          'DualSub — Doppia Traduzione YouTube',
-        tagline:        '// TRADUZIONE SIMULTANEA  ·  DOPPIA TRACCIA IN TEMPO REALE',
+        tagline:        '// TRADUZIONE SIMULTANEA  ·  DOPPIA TRACCIA IN TEMPO REALE',
         labelTarget:    '// DESTINAZIONE',
         labelLangs:     '// LINGUE',
         slotPrimary:    'LINGUA PRINCIPALE',
@@ -92,7 +102,7 @@ const I18N = {
         placeholder:    'https://www.youtube.com/watch?v=…',
         btnAnalyze:     'ANALIZZA E TRADUCI',
         btnLoading:     'TRADUZIONE IN CORSO…',
-        btnBack:        '◄  INDIETRO',
+        btnBack:        '◄  INDIETRO',
         errNoUrl:       'Inserisci un URL di YouTube.',
         errServer:      'Impossibile raggiungere il server. Verifica che Spring Boot sia sulla porta 8080.',
         stepTranscript: 'Recupero trascrizione',
@@ -100,13 +110,16 @@ const I18N = {
         stepSentences:  'Suddivisione in frasi',
         stepTranslation:'Traduzione',
         stepSourceAuto: 'Traccia 1: lingua del video',
+        stepCached:     'Trascrizione dalla cache ⚡',
         immLabel:       'MODALITÀ IMMERSIONE',
         immHint:        'lingua sorgente · la mia lingua',
+        labelHistory:   '// CRONOLOGIA',
+        histEmpty:      'Nessun video guardato',
         hudStatus:      (n1, l1, n2, l2) => `${n1} righe ${l1} · ${n2} righe ${l2}`,
     },
     de: {
         title:          'DualSub — Doppelte YouTube-Übersetzung',
-        tagline:        '// SIMULTANÜBERSETZUNG  ·  DOPPELSPUR IN ECHTZEIT',
+        tagline:        '// SIMULTANÜBERSETZUNG  ·  DOPPELSPUR IN ECHTZEIT',
         labelTarget:    '// ZIEL',
         labelLangs:     '// SPRACHEN',
         slotPrimary:    'HAUPTSPRACHE',
@@ -114,7 +127,7 @@ const I18N = {
         placeholder:    'https://www.youtube.com/watch?v=…',
         btnAnalyze:     'ANALYSIEREN & ÜBERSETZEN',
         btnLoading:     'ÜBERSETZUNG LÄUFT…',
-        btnBack:        '◄  ZURÜCK',
+        btnBack:        '◄  ZURÜCK',
         errNoUrl:       'Bitte eine YouTube-URL eingeben.',
         errServer:      'Server nicht erreichbar. Prüfe, ob Spring Boot auf Port 8080 läuft.',
         stepTranscript: 'Transkript abrufen',
@@ -122,8 +135,11 @@ const I18N = {
         stepSentences:  'In Sätze aufteilen',
         stepTranslation:'Übersetzung',
         stepSourceAuto: 'Spur 1: Sprache des Videos',
+        stepCached:     'Transkript aus Cache ⚡',
         immLabel:       'IMMERSIONSMODUS',
         immHint:        'Quellsprache · meine Sprache',
+        labelHistory:   '// VERLAUF',
+        histEmpty:      'Keine Videos angesehen',
         hudStatus:      (n1, l1, n2, l2) => `${n1} Zeilen ${l1} · ${n2} Zeilen ${l2}`,
     },
     pl: {
@@ -144,8 +160,11 @@ const I18N = {
         stepSentences:  'Podział na zdania',
         stepTranslation:'Tłumaczenie',
         stepSourceAuto: 'Ścieżka 1: język wideo',
+        stepCached:     'Transkrypcja z pamięci ⚡',
         immLabel:       'TRYB IMMERSJI',
         immHint:        'język źródłowy · mój język',
+        labelHistory:   '// HISTORIA',
+        histEmpty:      'Brak obejrzanych filmów',
         hudStatus:      (n1, l1, n2, l2) => `${n1} linii ${l1} · ${n2} linii ${l2}`,
     },
 };
@@ -168,9 +187,8 @@ function applyI18n() {
     document.title = t.title;
     document.documentElement.lang = uiLang;
     document.getElementById('tagline').textContent        = t.tagline;
-    // labelTarget contains a blink span — rebuild the HTML safely
     document.getElementById('labelTarget').innerHTML =
-        t.labelTarget + '  <span class="blink">_</span>';
+        t.labelTarget + '  <span class="blink">_</span>';
     document.getElementById('labelLangs').textContent     = t.labelLangs;
     document.getElementById('slotPrimary').textContent    = t.slotPrimary;
     document.getElementById('slotSecondary').textContent  = t.slotSecondary;
@@ -179,14 +197,15 @@ function applyI18n() {
     document.getElementById('btnBack').textContent        = t.btnBack;
     document.getElementById('immersionLabel').textContent = t.immLabel;
     document.getElementById('immersionHint').textContent  = t.immHint;
+    document.getElementById('labelHistory').textContent   = t.labelHistory;
 }
 
 /* ─── Immersion mode ────────────────────────────────────────── */
 function toggleImmersion(cb) {
     immersionMode = cb.checked;
-    // Dim both language rows to show they are overridden automatically
     document.getElementById('slot1').classList.toggle('imm-locked', immersionMode);
     document.getElementById('slot2').classList.toggle('imm-locked', immersionMode);
+    savePreferences();
 }
 
 /* ─── Boot ──────────────────────────────────────────────────── */
@@ -195,6 +214,8 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('videoUrl').addEventListener('keydown', e => {
         if (e.key === 'Enter') processVideo();
     });
+    loadPreferences();
+    loadHistory();
 });
 
 /* ─── Language card selection ───────────────────────────────── */
@@ -206,6 +227,176 @@ function pick(row, code, btn) {
     btn.classList.add(row === 1 ? 'selected-green' : 'selected-orange');
     if (row === 1) selectedLang1 = code;
     else           selectedLang2 = code;
+    savePreferences();
+}
+
+/* ─── Preferences persistence ───────────────────────────────── */
+async function loadPreferences() {
+    try {
+        const resp = await fetch('/api/preferences');
+        if (!resp.ok) return;
+        const prefs = await resp.json();
+
+        // Apply saved language selections without re-triggering savePreferences
+        if (prefs.lang1) {
+            const btn1 = document.querySelector(`#row1 [data-code="${prefs.lang1}"]`);
+            if (btn1) {
+                document.getElementById('row1')
+                    .querySelectorAll('.flag-btn')
+                    .forEach(c => c.classList.remove('selected-green', 'selected-orange'));
+                btn1.classList.add('selected-green');
+                selectedLang1 = prefs.lang1;
+            }
+        }
+        if (prefs.lang2) {
+            const btn2 = document.querySelector(`#row2 [data-code="${prefs.lang2}"]`);
+            if (btn2) {
+                document.getElementById('row2')
+                    .querySelectorAll('.flag-btn')
+                    .forEach(c => c.classList.remove('selected-green', 'selected-orange'));
+                btn2.classList.add('selected-orange');
+                selectedLang2 = prefs.lang2;
+            }
+        }
+        if (prefs.immersionMode) {
+            const cb = document.getElementById('immersionCheck');
+            cb.checked = true;
+            immersionMode = true;
+            document.getElementById('slot1').classList.add('imm-locked');
+            document.getElementById('slot2').classList.add('imm-locked');
+        }
+    } catch (e) { /* silent — server may not be ready yet */ }
+}
+
+async function savePreferences() {
+    try {
+        await fetch('/api/preferences', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                lang1: selectedLang1,
+                lang2: selectedLang2,
+                immersionMode,
+                uiLang,
+            }),
+        });
+    } catch (e) { /* silent */ }
+}
+
+/* ─── History panel ─────────────────────────────────────────── */
+async function loadHistory() {
+    try {
+        const resp = await fetch('/api/history');
+        if (!resp.ok) return;
+        const items = await resp.json();
+        renderHistory(items);
+    } catch (e) { /* silent */ }
+    // Always returns a resolved promise so callers can chain .then()
+}
+
+function renderHistory(items) {
+    const panel = document.getElementById('historyPanel');
+    const list  = document.getElementById('historyList');
+    const count = document.getElementById('histCount');
+    const t     = I18N[uiLang];
+
+    if (!items || items.length === 0) {
+        panel.classList.add('hidden');
+        return;
+    }
+
+    count.textContent = items.length;
+    panel.classList.remove('hidden');
+    list.innerHTML = '';
+
+    items.forEach(item => {
+        const date      = new Date(item.watchedAt).toLocaleDateString(uiLang, {
+            day: '2-digit', month: 'short', year: 'numeric',
+        });
+        const title     = item.videoTitle || item.videoId;
+        const lang1Lbl  = item.lang1 === 'auto'
+            ? '●' : (LANG_LABELS[item.lang1] || item.lang1.toUpperCase());
+        const lang2Lbl  = LANG_LABELS[item.lang2] || item.lang2.toUpperCase();
+
+        const el = document.createElement('div');
+        el.className = 'hist-item';
+        el.innerHTML = `
+            <img class="hist-thumb" src="${item.thumbnailUrl || ''}"
+                 alt="" loading="lazy"
+                 onerror="this.style.display='none'">
+            <div class="hist-info">
+                <span class="hist-title" title="${escapeHtml(title)}">${escapeHtml(title)}</span>
+                <div class="hist-meta">
+                    <span class="hist-date">${date}</span>
+                    <span class="hist-badge-lang green-badge-lang">${lang1Lbl}</span>
+                    <span class="hist-badge-lang orange-badge-lang">${lang2Lbl}</span>
+                </div>
+            </div>
+            <button class="hist-replay-btn" title="Relancer"
+                    onclick="replayFromHistory('${item.videoId}','${item.lang1}','${item.lang2}')">
+                ▶
+            </button>
+            <button class="hist-del-btn" title="Supprimer"
+                    onclick="deleteHistoryEntry(${item.id}, this)">
+                ✕
+            </button>`;
+        list.appendChild(el);
+    });
+}
+
+function toggleHistoryPanel() {
+    historyExpanded = !historyExpanded;
+    document.getElementById('historyList').style.display =
+        historyExpanded ? '' : 'none';
+    document.getElementById('histChevron').textContent =
+        historyExpanded ? '▼' : '▶';
+}
+
+async function deleteHistoryEntry(id, btn) {
+    try {
+        await fetch(`/api/history/${id}`, { method: 'DELETE' });
+        // Remove the item from the DOM
+        const item = btn.closest('.hist-item');
+        if (item) item.remove();
+        // If no items left, hide the panel
+        if (!document.querySelector('.hist-item')) {
+            document.getElementById('historyPanel').classList.add('hidden');
+        }
+        // Update count badge
+        const remaining = document.querySelectorAll('.hist-item').length;
+        document.getElementById('histCount').textContent = remaining || '';
+    } catch (e) { /* silent */ }
+}
+
+function replayFromHistory(videoId, lang1, lang2) {
+    document.getElementById('videoUrl').value =
+        `https://www.youtube.com/watch?v=${videoId}`;
+
+    // Select lang1
+    const btn1 = document.querySelector(`#row1 [data-code="${lang1}"]`);
+    if (btn1) pick(1, lang1, btn1);
+
+    // Select lang2
+    const btn2 = document.querySelector(`#row2 [data-code="${lang2}"]`);
+    if (btn2) pick(2, lang2, btn2);
+
+    // Uncheck immersion if needed
+    if (immersionMode && lang1 !== 'auto') {
+        const cb = document.getElementById('immersionCheck');
+        cb.checked = false;
+        toggleImmersion(cb);
+    }
+
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    processVideo();
+}
+
+function escapeHtml(str) {
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
 }
 
 /* ─── Pipeline steps (for SSE progress display) ─────────────── */
@@ -238,22 +429,29 @@ function initProgress(lang1Label, lang2Label) {
     panel.classList.remove('hidden');
 }
 
-function updateStep(stepKey) {
+function updateStep(stepKey, cached) {
     const keys  = PIPELINE_STEPS.map(s => s.key);
     const idx   = keys.indexOf(stepKey);
     const step  = PIPELINE_STEPS[idx];
     if (!step) return;
 
-    // Apply the step colour to the panel via a CSS custom property
-    document.getElementById('progressPanel').style.setProperty('--prog-color', step.color);
+    // Cache hit: gold colour.
+    // — Transcript: generic "from cache" label.
+    // — Translations: keep the language label + ⚡ suffix (e.g. "Traduction Français ⚡").
+    const color = cached ? '#ffd700' : step.color;
+    const label = cached
+        ? (stepKey === 'transcript' ? I18N[uiLang].stepCached : step.label + ' ⚡')
+        : step.label;
 
-    // Update the active step label
+    // Use the translation1 position (idx=3) for the bar when cached
+    const barIdx = cached ? 3 : idx;
+    const pct    = Math.round(((barIdx + 1) / (PIPELINE_STEPS.length + 1)) * 100);
+
+    document.getElementById('progressPanel').style.setProperty('--prog-color', color);
+
     const labelEl = document.getElementById('progLabel');
-    if (labelEl) labelEl.textContent = step.label;
+    if (labelEl) labelEl.textContent = label;
 
-    // Advance the progress bar: steps fill up to ~83%; complete pushes to 100%
-    // Using (idx+1)/(total+1) reserves the last segment for the 'complete' event
-    const pct = Math.round(((idx + 1) / (PIPELINE_STEPS.length + 1)) * 100);
     const barEl = document.getElementById('progBar');
     if (barEl) barEl.style.width = pct + '%';
 
@@ -285,7 +483,6 @@ function processVideo() {
     hideError();
     setLoading(true);
 
-    // In immersion mode: lang1 = auto-detected (video's language), lang2 = UI language
     const effectiveLang1 = immersionMode ? 'auto'   : selectedLang1;
     const effectiveLang2 = immersionMode ? uiLang   : selectedLang2;
     const lang1Label = immersionMode ? '?' : (LANG_LABELS[selectedLang1] || selectedLang1.toUpperCase());
@@ -297,14 +494,13 @@ function processVideo() {
     let sseHandled = false;
 
     sse.addEventListener('progress', e => {
-        const { step } = JSON.parse(e.data);
-        updateStep(step);
+        const data = JSON.parse(e.data);
+        updateStep(data.step, data.cached === true);
     });
 
     sse.addEventListener('complete', e => {
         sseHandled = true;
         sse.close();
-        // Flash the bar to 100% before hiding the panel
         const barEl = document.getElementById('progBar');
         if (barEl) barEl.style.width = '100%';
         const data = JSON.parse(e.data);
@@ -312,19 +508,10 @@ function processVideo() {
         subtitles1 = data.subtitles1 || [];
         subtitles2 = data.subtitles2 || [];
 
-        // ── Diagnostic console ────────────────────────────────
         console.log('[DualSub] Response received:');
         console.log('  videoId   :', data.videoId);
         console.log('  lang1     :', data.lang1Label, '→', subtitles1.length, 'subtitles');
         console.log('  lang2     :', data.lang2Label, '→', subtitles2.length, 'subtitles');
-        if (subtitles1.length > 0) {
-            console.log('  first [' + data.lang1Label + '] :', subtitles1[0]);
-            console.log('  last  [' + data.lang1Label + '] :', subtitles1[subtitles1.length - 1]);
-        } else { console.warn('  ⚠ subtitles1 is EMPTY'); }
-        if (subtitles2.length > 0) {
-            console.log('  first [' + data.lang2Label + '] :', subtitles2[0]);
-        } else { console.warn('  ⚠ subtitles2 is EMPTY'); }
-        // ────────────────────────────────────────────────────
 
         const label1 = data.lang1Label || lang1Label;
         const label2 = data.lang2Label || lang2Label;
@@ -335,6 +522,20 @@ function processVideo() {
 
         setLoading(false);
         hideProgress();
+
+        // Refresh history panel after a short delay (recordWatch is async on server).
+        // In player mode: also ensure the sidebar becomes visible.
+        setTimeout(() => {
+            loadHistory().then(() => {
+                const histPanel = document.getElementById('historyPanel');
+                const inSidebar = histPanel.classList.contains('hist-sidebar-mode');
+                if (inSidebar) {
+                    const hasItems = document.querySelectorAll('#historyList .hist-item').length > 0;
+                    histPanel.classList.toggle('hidden', !hasItems);
+                }
+            });
+        }, 1500);
+
         showPlayer(data.videoId);
     });
 
@@ -348,7 +549,7 @@ function processVideo() {
     });
 
     sse.onerror = () => {
-        if (sseHandled) return;   // already handled via 'complete' or 'apierror'
+        if (sseHandled) return;
         sse.close();
         console.error('[DualSub] SSE connection lost');
         showError(t.errServer);
@@ -359,8 +560,22 @@ function processVideo() {
 
 /* ─── YouTube Player ────────────────────────────────────────── */
 function showPlayer(videoId) {
+    const app         = document.querySelector('.app');
+    const histPanel   = document.getElementById('historyPanel');
+    const playerLayout = document.getElementById('playerLayout');
+
     document.getElementById('configPanel').classList.add('hidden');
-    document.getElementById('playerSection').classList.remove('hidden');
+
+    // Move history panel into the player layout as a left sidebar.
+    // Only show as sidebar if there are history items — otherwise skip it
+    // to avoid a blank column consuming space.
+    playerLayout.insertBefore(histPanel, playerLayout.firstChild);
+    histPanel.classList.add('hist-sidebar-mode');
+    const hasItems = document.querySelectorAll('#historyList .hist-item').length > 0;
+    histPanel.classList.toggle('hidden', !hasItems);
+
+    playerLayout.classList.remove('hidden');
+    app.classList.add('player-active');
 
     subtitles1.sort((a, b) => a.startMs - b.startMs);
     subtitles2.sort((a, b) => a.startMs - b.startMs);
@@ -387,7 +602,6 @@ function showPlayer(videoId) {
 function onPlayerStateChange(ev) {
     const states = { '-1':'UNSTARTED', 0:'ENDED', 1:'PLAYING', 2:'PAUSED', 3:'BUFFERING', 5:'CUED' };
     console.log('[DualSub] Player state:', states[ev.data] || ev.data);
-
     if (ev.data === YT.PlayerState.ENDED) {
         stopSync();
     } else if (!syncInterval) {
@@ -400,43 +614,27 @@ function startSync() {
     syncInterval = setInterval(syncSubtitles, 100);
 }
 function stopSync() {
-    if (syncInterval) {
-        clearInterval(syncInterval);
-        syncInterval = null;
-    }
+    if (syncInterval) { clearInterval(syncInterval); syncInterval = null; }
 }
 
 /* ─── Subtitle sync ─────────────────────────────────────────── */
 function syncSubtitles() {
     if (!player || typeof player.getCurrentTime !== 'function') return;
-
     const nowMs = player.getCurrentTime() * 1000;
-
-    const t1 = find(subtitles1, nowMs);
-    const t2 = find(subtitles2, nowMs);
-
-    document.getElementById('subtitleText1').textContent = t1;
-    document.getElementById('subtitleText2').textContent = t2;
-
+    document.getElementById('subtitleText1').textContent = find(subtitles1, nowMs);
+    document.getElementById('subtitleText2').textContent = find(subtitles2, nowMs);
     document.getElementById('hudTime').textContent = formatMs(nowMs);
 }
 
-/* Binary search in a startMs-sorted array.
-   Strategy: find the last entry whose startMs ≤ nowMs, then verify nowMs
-   is still within its duration window.  This is more resilient than a strict
-   interval search: if two entries accidentally overlap (timing edge-case),
-   the most recently started one is preferred, and skipping is avoided. */
 function find(list, nowMs) {
     if (!list || list.length === 0) return '';
-
     let lo = 0, hi = list.length - 1, best = -1;
     while (lo <= hi) {
         const mid = (lo + hi) >> 1;
         if (list[mid].startMs <= nowMs) { best = mid; lo = mid + 1; }
         else                            { hi = mid - 1; }
     }
-
-    if (best === -1) return '';                          // before first subtitle
+    if (best === -1) return '';
     const s = list[best];
     return nowMs < s.startMs + s.durationMs ? s.text : '';
 }
@@ -459,8 +657,21 @@ function resetApp() {
     document.getElementById('subtitleText2').textContent = '';
     document.getElementById('hudStatus').textContent = '';
     document.getElementById('hudTime').textContent = '';
+
+    const app          = document.querySelector('.app');
+    const histPanel    = document.getElementById('historyPanel');
+    const playerLayout = document.getElementById('playerLayout');
+
+    // Move history panel back between configPanel and playerLayout
+    app.insertBefore(histPanel, playerLayout);
+    histPanel.classList.remove('hist-sidebar-mode');
+
+    playerLayout.classList.add('hidden');
     document.getElementById('configPanel').classList.remove('hidden');
-    document.getElementById('playerSection').classList.add('hidden');
+    app.classList.remove('player-active');
+
+    // Reload history — renderHistory() will show/hide the panel as appropriate
+    loadHistory();
     if (player) player.stopVideo();
 }
 

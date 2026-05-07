@@ -765,6 +765,211 @@ body {
 }
 
 /* ══════════════════════════════════════════════════════════════
+   PLAYER LAYOUT (flex-row sidebar + player)
+   ══════════════════════════════════════════════════════════════ */
+.player-layout {
+    display: flex;
+    flex-direction: row;
+    align-items: flex-start;
+    gap: 1.2rem;
+    width: 100%;
+}
+
+/* App gets a wider max-width when the player layout is active */
+.app.player-active {
+    max-width: 1200px;
+}
+
+/* History panel wired as a left sidebar in player mode */
+.hist-sidebar-mode {
+    width: 260px;
+    flex-shrink: 0;
+    /* Match the total height of player-wrap + hud + btn-back roughly */
+    max-height: 680px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+.hist-sidebar-mode .hist-list {
+    flex: 1;
+    max-height: none;   /* parent handles the scroll boundary */
+    overflow-y: auto;
+}
+
+/* Player section expands to fill remaining width */
+.player-layout .player-section {
+    flex: 1;
+    min-width: 0;
+    align-items: stretch;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   HISTORIQUE
+   ══════════════════════════════════════════════════════════════ */
+.hist-panel {
+    gap: 0;
+    padding: 0;
+    overflow: hidden;
+    border-color: rgba(0,212,255,.12);
+}
+
+/* Clickable header row */
+.hist-header {
+    display: flex;
+    align-items: center;
+    gap: .7rem;
+    padding: .85rem 1.4rem;
+    cursor: pointer;
+    user-select: none;
+    transition: background .18s;
+}
+.hist-header:hover { background: rgba(0,212,255,.04); }
+.hist-header .block-label { flex: 1; margin: 0; opacity: .8; }
+
+.hist-count {
+    font-family: 'Orbitron', monospace;
+    font-size: .6rem;
+    font-weight: 700;
+    color: var(--cyan);
+    background: rgba(0,212,255,.12);
+    border: 1px solid rgba(0,212,255,.25);
+    border-radius: 10px;
+    padding: .1rem .5rem;
+    min-width: 1.4rem;
+    text-align: center;
+}
+
+.hist-chevron {
+    font-size: .6rem;
+    color: var(--txt-dim);
+    transition: color .2s;
+}
+.hist-header:hover .hist-chevron { color: var(--cyan); }
+
+/* Scrollable list */
+.hist-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    max-height: 340px;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(0,212,255,.2) transparent;
+    border-top: 1px solid rgba(0,212,255,.08);
+}
+.hist-list::-webkit-scrollbar       { width: 4px; }
+.hist-list::-webkit-scrollbar-thumb { background: rgba(0,212,255,.2); border-radius: 2px; }
+
+/* Individual history entry */
+.hist-item {
+    display: flex;
+    align-items: center;
+    gap: .9rem;
+    padding: .65rem 1.4rem;
+    border-bottom: 1px solid rgba(255,255,255,.04);
+    transition: background .15s;
+}
+.hist-item:last-child { border-bottom: none; }
+.hist-item:hover { background: rgba(255,255,255,.03); }
+
+/* Thumbnail */
+.hist-thumb {
+    width: 80px;
+    height: 45px;
+    object-fit: cover;
+    border-radius: 3px;
+    flex-shrink: 0;
+    background: #0d0d1f;
+    border: 1px solid rgba(255,255,255,.06);
+}
+
+/* Info column */
+.hist-info {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: .3rem;
+}
+.hist-title {
+    font-size: .82rem;
+    font-weight: 600;
+    color: var(--txt);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.hist-meta {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    flex-wrap: wrap;
+}
+.hist-date {
+    font-size: .65rem;
+    color: var(--txt-dim);
+    font-family: 'Exo 2', monospace;
+}
+.hist-badge-lang {
+    font-family: 'Orbitron', monospace;
+    font-size: .52rem;
+    font-weight: 700;
+    letter-spacing: .1em;
+    padding: .1rem .4rem;
+    border-radius: 2px;
+}
+.green-badge-lang {
+    color: var(--green);
+    background: rgba(0,255,136,.08);
+    border: 1px solid rgba(0,255,136,.2);
+}
+.orange-badge-lang {
+    color: var(--orange);
+    background: rgba(255,123,0,.08);
+    border: 1px solid rgba(255,123,0,.2);
+}
+
+/* Replay button */
+.hist-replay-btn {
+    flex-shrink: 0;
+    width: 32px; height: 32px;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(0,212,255,.07);
+    border: 1px solid rgba(0,212,255,.2);
+    border-radius: 4px;
+    color: var(--cyan);
+    font-size: .75rem;
+    cursor: pointer;
+    transition: all .18s;
+}
+.hist-replay-btn:hover {
+    background: rgba(0,212,255,.16);
+    box-shadow: 0 0 10px rgba(0,212,255,.25);
+}
+
+/* Delete button — always visible, subtle at rest */
+.hist-del-btn {
+    flex-shrink: 0;
+    width: 26px; height: 26px;
+    display: flex; align-items: center; justify-content: center;
+    background: transparent;
+    border: 1px solid rgba(255,255,255,.1);
+    border-radius: 3px;
+    color: var(--txt-dim);
+    font-size: .6rem;
+    cursor: pointer;
+    transition: all .18s;
+    opacity: .45;
+}
+.hist-item:hover .hist-del-btn { opacity: 1; }
+.hist-del-btn:hover {
+    color: var(--red);
+    border-color: rgba(255,61,61,.45);
+    background: rgba(255,61,61,.1);
+    opacity: 1;
+}
+
+/* ══════════════════════════════════════════════════════════════
    UTILITAIRES
    ══════════════════════════════════════════════════════════════ */
 .hidden { display: none !important; }

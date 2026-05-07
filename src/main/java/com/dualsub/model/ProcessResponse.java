@@ -23,4 +23,5 @@ public class ProcessResponse {
 
     public String getLang2Label() { return lang2Label; }
     public void setLang2Label(String lang2Label) { this.lang2Label = lang2Label; }
+
 }

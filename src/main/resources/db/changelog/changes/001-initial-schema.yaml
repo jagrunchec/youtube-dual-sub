@@ -1,0 +1,172 @@
+databaseChangeLog:
+
+  - changeSet:
+      id: 001-user-preferences
+      author: dualsub
+      comment: "Singleton table storing user language preferences"
+      changes:
+        - createTable:
+            tableName: user_preferences
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: lang1
+                  type: VARCHAR(10)
+                  defaultValue: "fr"
+                  constraints:
+                    nullable: false
+              - column:
+                  name: lang2
+                  type: VARCHAR(10)
+                  defaultValue: "de"
+                  constraints:
+                    nullable: false
+              - column:
+                  name: immersion_mode
+                  type: BOOLEAN
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+              - column:
+                  name: ui_lang
+                  type: VARCHAR(10)
+                  defaultValue: "fr"
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: TIMESTAMP
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: 002-transcript-cache
+      author: dualsub
+      comment: "Cache of processed transcripts keyed by videoId — avoids re-running the Python pipeline"
+      changes:
+        - createTable:
+            tableName: transcript_cache
+            columns:
+              - column:
+                  name: video_id
+                  type: VARCHAR(30)
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: language_code
+                  type: VARCHAR(10)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: entries_json
+                  type: CLOB
+                  constraints:
+                    nullable: false
+              - column:
+                  name: fetched_at
+                  type: TIMESTAMP
+                  constraints:
+                    nullable: false
+              - column:
+                  name: entry_count
+                  type: INT
+                  defaultValueNumeric: 0
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: 003-watch-history
+      author: dualsub
+      comment: "One row per video watch event, ordered by watched_at desc"
+      changes:
+        - createTable:
+            tableName: watch_history
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: video_id
+                  type: VARCHAR(30)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: video_title
+                  type: VARCHAR(500)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: thumbnail_url
+                  type: VARCHAR(500)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: lang1
+                  type: VARCHAR(10)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: lang2
+                  type: VARCHAR(10)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: watched_at
+                  type: TIMESTAMP
+                  constraints:
+                    nullable: false
+        - createIndex:
+            indexName: idx_watch_history_watched_at
+            tableName: watch_history
+            columns:
+              - column:
+                  name: watched_at
+
+  - changeSet:
+      id: 004-translation-cache
+      author: dualsub
+      comment: "Caches translated subtitle lists keyed by (video_id, lang) — avoids re-calling Google Translate"
+      changes:
+        - createTable:
+            tableName: translation_cache
+            columns:
+              - column:
+                  name: video_id
+                  type: VARCHAR(30)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: lang
+                  type: VARCHAR(10)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: entries_json
+                  type: CLOB
+                  constraints:
+                    nullable: false
+              - column:
+                  name: translated_at
+                  type: TIMESTAMP
+                  constraints:
+                    nullable: false
+              - column:
+                  name: entry_count
+                  type: INT
+                  defaultValueNumeric: 0
+                  constraints:
+                    nullable: false
+        - addPrimaryKey:
+            tableName: translation_cache
+            columnNames: video_id, lang
+            constraintName: pk_translation_cache

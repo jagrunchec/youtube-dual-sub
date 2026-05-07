@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Exo+2:wght@300;400;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css?v=3">
+    <link rel="stylesheet" href="style.css?v=10">
 </head>
 <body>
 
@@ -164,8 +164,30 @@
     </section><!-- /configPanel -->
 
 
+    <!-- ═══ HISTORIQUE ═══ -->
+    <section class="panel hist-panel hidden" id="historyPanel">
+        <span class="corner tl"></span>
+        <span class="corner tr"></span>
+        <span class="corner bl"></span>
+        <span class="corner br"></span>
+
+        <div class="hist-header" onclick="toggleHistoryPanel()">
+            <p class="block-label" id="labelHistory">&#x2215;&#x2215; HISTORIQUE</p>
+            <span class="hist-count" id="histCount"></span>
+            <span class="hist-chevron" id="histChevron">▼</span>
+        </div>
+
+        <div id="historyList" class="hist-list"></div>
+    </section>
+
+
+    <!-- ═══ LAYOUT LECTEUR (flex-row : sidebar historique + player) ═══ -->
+    <div class="player-layout hidden" id="playerLayout">
+
+    <!-- historyPanel est déplacé ici par JS au moment de la lecture -->
+
     <!-- ═══ LECTEUR + HUD ═══ -->
-    <section class="player-section hidden" id="playerSection">
+    <section class="player-section" id="playerSection">
 
         <div class="player-wrap">
             <!-- Coins -->
@@ -198,13 +220,15 @@
             </div>
         </div>
 
-        <button class="btn-back" id="btnBack" onclick="resetApp()">◄ &nbsp;RETOUR</button>
+<button class="btn-back" id="btnBack" onclick="resetApp()">◄ &nbsp;RETOUR</button>
 
     </section>
+
+    </div><!-- /playerLayout -->
 
 </div><!-- /app -->
 
 <script src="https://www.youtube.com/iframe_api"></script>
-<script src="app.js?v=3"></script>
+<script src="app.js?v=10"></script>
 </body>
 </html>

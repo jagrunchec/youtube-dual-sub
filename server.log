@@ -7,60 +7,46 @@
  =========|_|==============|___/=/_/_/_/
  :: Spring Boot ::                (v3.2.0)
 
-2026-05-06T10:54:44.901+02:00  INFO 22208 --- [youtube-dual-sub] [           main] com.dualsub.DualSubApplication           : Starting DualSubApplication v1.0.0 using Java 26.0.1 with PID 22208 (C:\Users\User\youtube-dual-sub\target\youtube-dual-sub-1.0.0.jar started by User in C:\Users\User\youtube-dual-sub)
-2026-05-06T10:54:44.904+02:00  INFO 22208 --- [youtube-dual-sub] [           main] com.dualsub.DualSubApplication           : No active profile set, falling back to 1 default profile: "default"
-2026-05-06T10:54:45.489+02:00  INFO 22208 --- [youtube-dual-sub] [           main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat initialized with port 8080 (http)
-2026-05-06T10:54:45.496+02:00  INFO 22208 --- [youtube-dual-sub] [           main] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
-2026-05-06T10:54:45.496+02:00  INFO 22208 --- [youtube-dual-sub] [           main] o.apache.catalina.core.StandardEngine    : Starting Servlet engine: [Apache Tomcat/10.1.16]
-2026-05-06T10:54:45.528+02:00  INFO 22208 --- [youtube-dual-sub] [           main] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring embedded WebApplicationContext
-2026-05-06T10:54:45.529+02:00  INFO 22208 --- [youtube-dual-sub] [           main] w.s.c.ServletWebServerApplicationContext : Root WebApplicationContext: initialization completed in 578 ms
-2026-05-06T10:54:45.679+02:00  INFO 22208 --- [youtube-dual-sub] [           main] o.s.b.a.w.s.WelcomePageHandlerMapping    : Adding welcome page: class path resource [static/index.html]
-2026-05-06T10:54:45.818+02:00  INFO 22208 --- [youtube-dual-sub] [           main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat started on port 8080 (http) with context path ''
-2026-05-06T10:54:45.828+02:00  INFO 22208 --- [youtube-dual-sub] [           main] com.dualsub.DualSubApplication           : Started DualSubApplication in 1.192 seconds (process running for 1.449)
-2026-05-06T10:55:02.374+02:00  INFO 22208 --- [youtube-dual-sub] [nio-8080-exec-1] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring DispatcherServlet 'dispatcherServlet'
-2026-05-06T10:55:02.376+02:00  INFO 22208 --- [youtube-dual-sub] [nio-8080-exec-1] o.s.web.servlet.DispatcherServlet        : Initializing Servlet 'dispatcherServlet'
-2026-05-06T10:55:02.376+02:00  INFO 22208 --- [youtube-dual-sub] [nio-8080-exec-1] o.s.web.servlet.DispatcherServlet        : Completed initialization in 0 ms
-[Transcript] Starting transcript fetch for videoId=2KAmqiTpa8Y
-[Transcript] fetchViaYtdlp videoId=2KAmqiTpa8Y
-[Transcript] Script path: C:\Users\User\youtube-dual-sub\scripts\get_transcript.py
-[Transcript] Script stdout: 65518 chars
-[Transcript] Done: 774 fragments ? 374 merged phrases
-[Debug] 374 subtitles fetched for 2KAmqiTpa8Y
-[Controller] Processing video: 2KAmqiTpa8Y | lang1=fr lang2=de
-[Transcript] Starting transcript fetch for videoId=2KAmqiTpa8Y
-[Transcript] fetchViaYtdlp videoId=2KAmqiTpa8Y
-[Transcript] Script path: C:\Users\User\youtube-dual-sub\scripts\get_transcript.py
-[Transcript] Script stdout: 65518 chars
-[Transcript] Done: 774 fragments ? 374 merged phrases
-[Controller] Source transcript: 374 entries
-[Translation] 374 subtitles ? 13 chunk(s) ? fr
-[Translation] Chunk 1/13 — expected: 32, received: 32
-[Translation] Chunk 2/13 — expected: 29, received: 29
-[Translation] Chunk 3/13 — expected: 29, received: 29
-[Translation] Chunk 4/13 — expected: 29, received: 29
-[Translation] Chunk 5/13 — expected: 29, received: 29
-[Translation] Chunk 6/13 — expected: 32, received: 32
-[Translation] Chunk 7/13 — expected: 30, received: 30
-[Translation] Chunk 8/13 — expected: 30, received: 30
-[Translation] Chunk 9/13 — expected: 31, received: 31
-[Translation] Chunk 10/13 — expected: 29, received: 29
-[Translation] Chunk 11/13 — expected: 27, received: 27
-[Translation] Chunk 12/13 — expected: 31, received: 31
-[Translation] Chunk 13/13 — expected: 16, received: 16
-[Translation] Done: 374 entries translated to fr
-[Translation] 374 subtitles ? 13 chunk(s) ? de
-[Translation] Chunk 1/13 — expected: 32, received: 32
-[Translation] Chunk 2/13 — expected: 29, received: 29
-[Translation] Chunk 3/13 — expected: 29, received: 29
-[Translation] Chunk 4/13 — expected: 29, received: 29
-[Translation] Chunk 5/13 — expected: 29, received: 29
-[Translation] Chunk 6/13 — expected: 32, received: 32
-[Translation] Chunk 7/13 — expected: 30, received: 30
-[Translation] Chunk 8/13 — expected: 30, received: 30
-[Translation] Chunk 9/13 — expected: 31, received: 31
-[Translation] Chunk 10/13 — expected: 29, received: 29
-[Translation] Chunk 11/13 — expected: 27, received: 27
-[Translation] Chunk 12/13 — expected: 31, received: 31
-[Translation] Chunk 13/13 — expected: 16, received: 16
-[Translation] Done: 374 entries translated to de
-[Controller] Translation done: 374 [fr] / 374 [de]
+2026-05-07T13:25:12.978+02:00  INFO 26040 --- [youtube-dual-sub] [           main] com.dualsub.DualSubApplication           : Starting DualSubApplication v1.0.0 using Java 26.0.1 with PID 26040 (C:\Users\User\youtube-dual-sub\target\youtube-dual-sub-1.0.0.jar started by User in C:\Users\User\youtube-dual-sub)
+2026-05-07T13:25:12.981+02:00  INFO 26040 --- [youtube-dual-sub] [           main] com.dualsub.DualSubApplication           : No active profile set, falling back to 1 default profile: "default"
+2026-05-07T13:25:13.391+02:00  INFO 26040 --- [youtube-dual-sub] [           main] .s.d.r.c.RepositoryConfigurationDelegate : Bootstrapping Spring Data JPA repositories in DEFAULT mode.
+2026-05-07T13:25:13.429+02:00  INFO 26040 --- [youtube-dual-sub] [           main] .s.d.r.c.RepositoryConfigurationDelegate : Finished Spring Data repository scanning in 33 ms. Found 4 JPA repository interfaces.
+2026-05-07T13:25:13.765+02:00  INFO 26040 --- [youtube-dual-sub] [           main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat initialized with port 8080 (http)
+2026-05-07T13:25:13.772+02:00  INFO 26040 --- [youtube-dual-sub] [           main] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
+2026-05-07T13:25:13.773+02:00  INFO 26040 --- [youtube-dual-sub] [           main] o.apache.catalina.core.StandardEngine    : Starting Servlet engine: [Apache Tomcat/10.1.16]
+2026-05-07T13:25:13.808+02:00  INFO 26040 --- [youtube-dual-sub] [           main] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring embedded WebApplicationContext
+2026-05-07T13:25:13.810+02:00  INFO 26040 --- [youtube-dual-sub] [           main] w.s.c.ServletWebServerApplicationContext : Root WebApplicationContext: initialization completed in 778 ms
+2026-05-07T13:25:13.831+02:00  INFO 26040 --- [youtube-dual-sub] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Starting...
+2026-05-07T13:25:13.979+02:00  INFO 26040 --- [youtube-dual-sub] [           main] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Added connection conn0: url=jdbc:h2:file:./data/dualsub user=SA
+2026-05-07T13:25:13.980+02:00  INFO 26040 --- [youtube-dual-sub] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Start completed.
+2026-05-07T13:25:13.988+02:00  INFO 26040 --- [youtube-dual-sub] [           main] o.s.b.a.h2.H2ConsoleAutoConfiguration    : H2 console available at '/h2-console'. Database available at 'jdbc:h2:file:./data/dualsub'
+2026-05-07T13:25:14.095+02:00  INFO 26040 --- [youtube-dual-sub] [           main] liquibase.database                       : Set default schema name to PUBLIC
+2026-05-07T13:25:14.428+02:00  INFO 26040 --- [youtube-dual-sub] [           main] liquibase.changelog                      : Reading from PUBLIC.DATABASECHANGELOG
+2026-05-07T13:25:14.495+02:00  INFO 26040 --- [youtube-dual-sub] [           main] liquibase.lockservice                    : Successfully acquired change log lock
+2026-05-07T13:25:14.497+02:00  INFO 26040 --- [youtube-dual-sub] [           main] liquibase.command                        : Using deploymentId: 8153114497
+2026-05-07T13:25:14.499+02:00  INFO 26040 --- [youtube-dual-sub] [           main] liquibase.changelog                      : Reading from PUBLIC.DATABASECHANGELOG
+Running Changeset: db/changelog/changes/001-initial-schema.yaml::004-translation-cache::dualsub
+2026-05-07T13:25:14.513+02:00  INFO 26040 --- [youtube-dual-sub] [           main] liquibase.changelog                      : Table translation_cache created
+2026-05-07T13:25:14.515+02:00  INFO 26040 --- [youtube-dual-sub] [           main] liquibase.changelog                      : Primary key added to translation_cache (video_id, lang)
+2026-05-07T13:25:14.516+02:00  INFO 26040 --- [youtube-dual-sub] [           main] liquibase.changelog                      : ChangeSet db/changelog/changes/001-initial-schema.yaml::004-translation-cache::dualsub ran successfully in 7ms
+2026-05-07T13:25:14.526+02:00  INFO 26040 --- [youtube-dual-sub] [           main] liquibase.util                           : UPDATE SUMMARY
+2026-05-07T13:25:14.527+02:00  INFO 26040 --- [youtube-dual-sub] [           main] liquibase.util                           : Run:                          1
+2026-05-07T13:25:14.527+02:00  INFO 26040 --- [youtube-dual-sub] [           main] liquibase.util                           : Previously run:               3
+2026-05-07T13:25:14.528+02:00  INFO 26040 --- [youtube-dual-sub] [           main] liquibase.util                           : Filtered out:                 0
+2026-05-07T13:25:14.528+02:00  INFO 26040 --- [youtube-dual-sub] [           main] liquibase.util                           : -------------------------------
+2026-05-07T13:25:14.528+02:00  INFO 26040 --- [youtube-dual-sub] [           main] liquibase.util                           : Total change sets:            4
+2026-05-07T13:25:14.528+02:00  INFO 26040 --- [youtube-dual-sub] [           main] liquibase.util                           : Update summary generated
+2026-05-07T13:25:14.529+02:00  INFO 26040 --- [youtube-dual-sub] [           main] liquibase.command                        : Update command completed successfully.
+Liquibase: Update has been successful. Rows affected: 1
+2026-05-07T13:25:14.531+02:00  INFO 26040 --- [youtube-dual-sub] [           main] liquibase.lockservice                    : Successfully released change log lock
+2026-05-07T13:25:14.531+02:00  INFO 26040 --- [youtube-dual-sub] [           main] liquibase.command                        : Command execution complete
+2026-05-07T13:25:14.596+02:00  INFO 26040 --- [youtube-dual-sub] [           main] o.hibernate.jpa.internal.util.LogHelper  : HHH000204: Processing PersistenceUnitInfo [name: default]
+2026-05-07T13:25:14.632+02:00  INFO 26040 --- [youtube-dual-sub] [           main] org.hibernate.Version                    : HHH000412: Hibernate ORM core version 6.3.1.Final
+2026-05-07T13:25:14.653+02:00  INFO 26040 --- [youtube-dual-sub] [           main] o.h.c.internal.RegionFactoryInitiator    : HHH000026: Second-level cache disabled
+2026-05-07T13:25:14.770+02:00  INFO 26040 --- [youtube-dual-sub] [           main] o.s.o.j.p.SpringPersistenceUnitInfo      : No LoadTimeWeaver setup: ignoring JPA class transformer
+2026-05-07T13:25:14.792+02:00  WARN 26040 --- [youtube-dual-sub] [           main] org.hibernate.orm.deprecation            : HHH90000025: H2Dialect does not need to be specified explicitly using 'hibernate.dialect' (remove the property setting and it will be selected by default)
+2026-05-07T13:25:15.229+02:00  INFO 26040 --- [youtube-dual-sub] [           main] o.h.e.t.j.p.i.JtaPlatformInitiator       : HHH000489: No JTA platform available (set 'hibernate.transaction.jta.platform' to enable JTA platform integration)
+2026-05-07T13:25:15.231+02:00  INFO 26040 --- [youtube-dual-sub] [           main] j.LocalContainerEntityManagerFactoryBean : Initialized JPA EntityManagerFactory for persistence unit 'default'
+2026-05-07T13:25:15.602+02:00  INFO 26040 --- [youtube-dual-sub] [           main] o.s.b.a.w.s.WelcomePageHandlerMapping    : Adding welcome page: class path resource [static/index.html]
+2026-05-07T13:25:15.808+02:00  INFO 26040 --- [youtube-dual-sub] [           main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat started on port 8080 (http) with context path ''
+2026-05-07T13:25:15.821+02:00  INFO 26040 --- [youtube-dual-sub] [           main] com.dualsub.DualSubApplication           : Started DualSubApplication in 3.107 seconds (process running for 3.383)
