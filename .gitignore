@@ -1,0 +1,58 @@
+# ── Maven ────────────────────────────────────────────────────────────────────
+target/
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+pom.xml.next
+release.properties
+
+# ── Java ─────────────────────────────────────────────────────────────────────
+*.class
+*.jar
+*.war
+*.ear
+*.nar
+hs_err_pid*
+replay_pid*
+
+# ── Python ───────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+.eggs/
+pip-log.txt
+pip-delete-this-directory.txt
+
+# ── Hugging Face model cache (large — downloaded automatically on first run) ──
+.cache/
+
+# ── Server logs ───────────────────────────────────────────────────────────────
+*.log
+server.log
+server-err.log
+
+# ── IntelliJ IDEA ─────────────────────────────────────────────────────────────
+.idea/
+!.idea/.gitignore
+*.iml
+*.iws
+*.ipr
+out/
+
+# ── VS Code ───────────────────────────────────────────────────────────────────
+.vscode/
+
+# ── OS ────────────────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ── Environment / secrets ─────────────────────────────────────────────────────
+.env
+.env.*
+application-local.properties

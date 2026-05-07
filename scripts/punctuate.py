@@ -123,12 +123,19 @@ def main():
     # sees full cross-sentence context.
     full_text = " ".join(e["text"] for e in entries)
 
+    # Use GPU if available (CUDA), otherwise fall back to CPU.
+    import torch
+    device = 0 if torch.cuda.is_available() else -1
+    device_label = f"GPU (cuda:{device})" if device >= 0 else "CPU"
+    sys.stderr.write(f"[punctuate] Running on {device_label}\n")
+
     # aggregation_strategy=None is the modern replacement for grouped_entities=False.
     # It returns one dict per sub-token rather than grouped entity spans.
     pipe = pipeline(
         "ner",
         model=MODEL_NAME,
         aggregation_strategy=None,
+        device=device,
     )
 
     punctuated_full = restore_punctuation(pipe, full_text)

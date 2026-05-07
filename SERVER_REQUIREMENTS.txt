@@ -1,0 +1,166 @@
+================================================================================
+DUALSUB — SERVER REQUIREMENTS
+================================================================================
+
+This document lists the software and hardware requirements for running DualSub,
+covering both the current development machine and recommendations for a future
+cloud deployment.
+
+--------------------------------------------------------------------------------
+1. CURRENT DEVELOPMENT MACHINE
+--------------------------------------------------------------------------------
+
+Hardware
+  CPU     AMD Ryzen 7 8700F — 8 cores / 16 threads
+  RAM     32 GB
+  GPU     NVIDIA GeForce RTX 5070 — 12 GB VRAM
+  Disk    ~776 GB free on C:\
+
+Software
+  OS              Windows 11
+  Java            26.0.1 (HotSpot, 64-bit)
+  Maven           3.9.9  (C:\Users\User\maven\apache-maven-3.9.9\)
+  Python          3.12.9 (C:\Python312\python.exe)  ← used by DualSub
+                  3.14.4 (C:\Python314\python.exe)  ← system default, not used by DualSub
+  PyTorch         2.11.0+cu128  ← GPU build, CUDA 12.8
+  transformers    5.8.0
+  CUDA driver     591.86  — reports CUDA 13.1
+
+GPU / CUDA status on this machine
+  ACTIVE — RTX 5070 (sm_120 Blackwell) running on CUDA 12.8 via torch 2.11.0+cu128.
+  Punctuation inference runs on GPU (~2 s per request instead of 20–90 s on CPU).
+
+  Why Python 3.12 and not 3.14:
+    PyTorch CUDA wheels are only published for Python <= 3.12 on pytorch.org.
+    Python 3.14 has no CUDA wheel in any index (cu118 … cu128) as of 2026-05.
+    Python 3.12 was installed in parallel (C:\Python312\) and is used exclusively
+    by DualSub via app.transcript.python in application.properties.
+
+  Why torch 2.11.0+cu128 and not 2.5.1+cu124:
+    The RTX 5070 is Blackwell (compute capability sm_120). PyTorch 2.5.1 (cu124)
+    only supports up to sm_90 (Ada Lovelace / Hopper). Blackwell support was added
+    in PyTorch 2.7. The cu128 index provides torch 2.11.0 with sm_120 support.
+
+--------------------------------------------------------------------------------
+2. SOFTWARE REQUIREMENTS (ALL ENVIRONMENTS)
+--------------------------------------------------------------------------------
+
+Java Runtime
+  Minimum : Java 17 (LTS)
+  Tested  : Java 26.0.1
+  Notes   : Spring Boot 3.2 requires Java 17+. Use a 64-bit JRE/JDK.
+            The JAR is self-contained; no application server needed.
+
+Maven (build only — not required at runtime)
+  Version : 3.9.x
+  Notes   : Only needed to compile the project (mvn clean package -DskipTests).
+            The produced JAR embeds Tomcat; Maven is not needed on the server.
+
+Python
+  Minimum          : 3.10
+  Tested (CPU)     : 3.14.4
+  Required for GPU : 3.12  (PyTorch CUDA wheels are not published for Python 3.13+
+                     as of 2026-05; the highest supported version is Python 3.12
+                     with torch 2.5.1 + cu124)
+  Notes   : Must be a full CPython install (not the Windows Store stub).
+            The path must be absolute and set in application.properties:
+              app.transcript.python=<absolute/path/to/python>
+            ProcessBuilder does not inherit the shell PATH.
+
+Python libraries (must be installed for the configured python executable)
+  youtube-transcript-api       — transcript fetching via YouTube InnerTube
+  transformers                 — Hugging Face pipeline for punctuation model
+  deepmultilingualpunctuation  — wrapper for oliverguhr punctuation model
+                                 (v1.0.1 only; incompatible with transformers >= 5.x;
+                                  the app bypasses its wrapper and calls the
+                                  Hugging Face pipeline directly)
+  torch                        — PyTorch backend for transformers inference
+                                 CPU build : pip install torch
+                                   (works with any Python version >= 3.10)
+                                 GPU build : pip install torch==2.11.0+cu128 \
+                                               --index-url https://download.pytorch.org/whl/cu128
+                                   IMPORTANT: requires Python <= 3.12.
+                                   Python 3.13+ has no CUDA wheel as of 2026-05.
+                                   RTX 5000 series (Blackwell, sm_120): use cu128 / torch >= 2.7.
+                                   RTX 4000 series (Ada, sm_89): cu124 / torch >= 2.0 is sufficient.
+
+Hugging Face model (auto-downloaded on first run)
+  Model   : oliverguhr/fullstop-punctuation-multilang-large
+  Size    : ~680 MB
+  Cache   : ~/.cache/huggingface/   (or %USERPROFILE%\.cache\huggingface\ on Windows)
+  Notes   : Requires outbound HTTPS to huggingface.co on first run.
+            Subsequent runs use the local cache; no internet needed for inference.
+  Languages supported by this model:
+    Czech (cs), German (de), English (en), Spanish (es),
+    French (fr), Italian (it), Polish (pl), Slovak (sk)
+
+External services (runtime, outbound only)
+  YouTube InnerTube API   — transcript fetch (youtube-transcript-api)
+  Google Translate (gtx)  — unofficial endpoint, no API key required
+    URL: https://translate.googleapis.com/translate_a/single?client=gtx
+
+--------------------------------------------------------------------------------
+3. HARDWARE REQUIREMENTS
+--------------------------------------------------------------------------------
+
+Minimum (CPU-only, no GPU)
+  CPU   4 cores
+  RAM   8 GB
+  Disk  2 GB free  (model cache: 680 MB + OS + JVM + Python)
+  Notes : Punctuation inference on CPU takes 20–90 s per request.
+          Suitable for low-traffic or personal use.
+
+Recommended (GPU-accelerated)
+  CPU   8 cores
+  RAM   16 GB
+  GPU   NVIDIA GPU with CUDA support and >= 4 GB VRAM
+          (VRAM: ~2 GB for model + workspace headroom)
+  Disk  4 GB free
+  Notes : PyTorch CUDA wheels require CUDA 11.8+ on the host.
+          With GPU, punctuation inference drops to ~2 s per request.
+
+GPU requirements in detail
+  CUDA toolkit  : 11.8 minimum (cu118), 12.4 recommended (cu124)
+  PyTorch       : must be installed as a CUDA build matching the toolkit version
+  VRAM          : 2 GB minimum for oliverguhr/fullstop-punctuation-multilang-large
+                  in fp32; 1.2 GB in fp16 (half-precision, requires Ampere or newer)
+  Driver        : see https://docs.nvidia.com/cuda/cuda-toolkit-release-notes/
+                  for driver / CUDA version compatibility matrix
+
+Cloud GPU instance equivalents (indicative)
+  AWS    : g4dn.xlarge  (T4, 16 GB VRAM)  or  g5.xlarge  (A10G, 24 GB VRAM)
+  GCP    : n1-standard-4 + T4 GPU
+  Azure  : NC4as_T4_v3
+  Note   : A T4 (16 GB) is more than sufficient; a g4dn.xlarge on AWS is the
+           cost-effective minimum for GPU-accelerated inference.
+
+--------------------------------------------------------------------------------
+4. NETWORK REQUIREMENTS
+--------------------------------------------------------------------------------
+
+Outbound (server must be able to reach)
+  huggingface.co            — first-run model download (680 MB, one-time)
+  youtube.com               — InnerTube API for transcript fetch (each request)
+  translate.googleapis.com  — Google Translate gtx endpoint (each request)
+
+Inbound
+  Port 8080 (default) — configurable in application.properties (server.port)
+
+No inbound connections are required from YouTube or Google;
+all calls are initiated by the server.
+
+--------------------------------------------------------------------------------
+5. CONFIGURATION FILE
+--------------------------------------------------------------------------------
+
+src/main/resources/application.properties
+
+  server.port=8080
+  app.transcript.script=scripts/get_transcript.py
+  app.transcript.python=<absolute path to python executable>
+
+The scripts/ directory must be present in the working directory from which
+the JAR is launched. Use the provided start.bat (Windows) or equivalent
+shell script to ensure the working directory is always the project root.
+
+================================================================================
