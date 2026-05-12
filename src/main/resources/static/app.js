@@ -24,6 +24,10 @@ function showApp() {
     document.getElementById('userBar').classList.remove('hidden');
     document.getElementById('mainApp').classList.remove('hidden');
     renderUserBar();
+    // Show help automatically on first visit
+    if (!localStorage.getItem('dualsubHelpSeen')) {
+        setTimeout(showHelp, 700);
+    }
 }
 
 function showAuthOverlay() {
@@ -1609,7 +1613,13 @@ function onYouTubeIframeAPIReady() {}
    ══════════════════════════════════════════════════════════════ */
 function initKeyboardShortcuts() {
     document.addEventListener('keydown', e => {
-        // Only when the player layout is visible
+        // Escape: close any open modal
+        if (e.key === 'Escape') {
+            if (!document.getElementById('helpModal').classList.contains('hidden')) { closeHelp(); return; }
+            if (!document.getElementById('profileModal').classList.contains('hidden')) { closeProfileModal(); return; }
+        }
+
+        // Player shortcuts — only when the player layout is visible
         if (document.getElementById('playerLayout').classList.contains('hidden')) return;
         if (!player || typeof player.getPlayerState !== 'function') return;
         // Ignore when focus is inside a text field
@@ -1800,6 +1810,46 @@ async function loadUserStats() {
         if (!resp.ok) return null;
         return await resp.json();
     } catch (e) { return null; }
+}
+
+/* ══════════════════════════════════════════════════════════════
+   HELP MODAL
+   ══════════════════════════════════════════════════════════════ */
+function showHelp() {
+    document.getElementById('helpModal').classList.remove('hidden');
+    localStorage.setItem('dualsubHelpSeen', '1');
+}
+
+function closeHelp() {
+    document.getElementById('helpModal').classList.add('hidden');
+}
+
+/* ══════════════════════════════════════════════════════════════
+   COPY VIDEO URL
+   ══════════════════════════════════════════════════════════════ */
+async function copyVideoUrl() {
+    if (!_currentVideoId) return;
+    const url = `https://www.youtube.com/watch?v=${_currentVideoId}`;
+    const btn = document.getElementById('btnCopyUrl');
+    try {
+        await navigator.clipboard.writeText(url);
+        const orig = btn.textContent;
+        btn.textContent = '✓ COPIÉ !';
+        btn.classList.add('tb-active');
+        setTimeout(() => { btn.textContent = orig; btn.classList.remove('tb-active'); }, 2200);
+    } catch (e) {
+        // Fallback for browsers where clipboard API is blocked
+        const tmp = document.createElement('input');
+        tmp.value = url;
+        document.body.appendChild(tmp);
+        tmp.select();
+        document.execCommand('copy');
+        document.body.removeChild(tmp);
+        const orig = btn.textContent;
+        btn.textContent = '✓ COPIÉ !';
+        btn.classList.add('tb-active');
+        setTimeout(() => { btn.textContent = orig; btn.classList.remove('tb-active'); }, 2200);
+    }
 }
 
 function renderStatsSection(stats) {

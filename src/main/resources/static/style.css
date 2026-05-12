@@ -1384,6 +1384,103 @@ body {
 }
 
 /* ══════════════════════════════════════════════════════════════
+   HELP BUTTON (user bar)
+   ══════════════════════════════════════════════════════════════ */
+.ub-btn-help {
+    color: #a855f7; border-color: rgba(168,85,247,.3);
+    background: rgba(168,85,247,.08);
+}
+.ub-btn-help:hover { background: rgba(168,85,247,.18); border-color: rgba(168,85,247,.5); }
+
+/* ══════════════════════════════════════════════════════════════
+   HELP MODAL
+   ══════════════════════════════════════════════════════════════ */
+.help-modal-box {
+    max-width: 680px;
+    max-height: 88vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+.help-body {
+    overflow-y: auto; flex: 1;
+    padding: 1.5rem;
+    display: flex; flex-direction: column; gap: 1.75rem;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(168,85,247,.25) transparent;
+}
+.help-body::-webkit-scrollbar { width: 4px; }
+.help-body::-webkit-scrollbar-thumb { background: rgba(168,85,247,.25); border-radius: 2px; }
+
+.help-section h3 {
+    font-family: 'Orbitron', sans-serif; font-size: .56rem; letter-spacing: .12em;
+    color: rgba(168,85,247,.7); border-bottom: 1px solid rgba(168,85,247,.15);
+    padding-bottom: .4rem; margin-bottom: .85rem;
+}
+.help-hint {
+    font-family: 'Exo 2', sans-serif; font-size: .7rem; font-weight: 400;
+    letter-spacing: .02em; color: rgba(255,255,255,.28); text-transform: none;
+}
+
+/* Keyboard shortcut table */
+.help-table {
+    width: 100%; border-collapse: collapse;
+    font-family: 'Exo 2', sans-serif; font-size: .84rem;
+}
+.help-table tr { border-bottom: 1px solid rgba(255,255,255,.05); }
+.help-table tr:last-child { border-bottom: none; }
+.help-table td { padding: .45rem .6rem; color: #c0c8e8; vertical-align: middle; }
+.help-table td:first-child { white-space: nowrap; width: 32%; }
+
+/* <kbd> tag */
+kbd {
+    display: inline-block; padding: .12rem .42rem;
+    background: rgba(168,85,247,.1); border: 1px solid rgba(168,85,247,.35);
+    border-radius: 3px; border-bottom-width: 2px;
+    font-family: 'Orbitron', monospace; font-size: .64rem;
+    color: #a855f7; margin: .1rem; white-space: nowrap;
+}
+
+/* Feature cards */
+.help-features { display: flex; flex-direction: column; gap: .6rem; }
+.help-feat {
+    display: flex; gap: .85rem; align-items: flex-start;
+    padding: .6rem .8rem;
+    background: rgba(255,255,255,.025);
+    border: 1px solid rgba(255,255,255,.06);
+    border-radius: 4px;
+    transition: background .15s;
+}
+.help-feat:hover { background: rgba(168,85,247,.04); border-color: rgba(168,85,247,.12); }
+.help-feat-icon {
+    font-size: 1.25rem; flex-shrink: 0;
+    width: 2.2rem; text-align: center; margin-top: .1rem;
+}
+.help-feat strong {
+    display: block; font-family: 'Orbitron', sans-serif; font-size: .56rem;
+    letter-spacing: .07em; color: #e0e8ff; margin-bottom: .28rem;
+}
+.help-feat p {
+    font-family: 'Exo 2', sans-serif; font-size: .8rem;
+    color: rgba(255,255,255,.48); line-height: 1.48; margin: 0;
+}
+.help-feat p em { color: rgba(0,212,255,.75); font-style: normal; }
+.help-feat p kbd { font-size: .6rem; }
+
+/* Light theme overrides for help modal */
+body.theme-light .ub-btn-help { color: #7c3aed; border-color: rgba(124,58,237,.3); background: rgba(124,58,237,.08); }
+body.theme-light .ub-btn-help:hover { background: rgba(124,58,237,.16); }
+body.theme-light .help-section h3 { color: rgba(124,58,237,.7); border-bottom-color: rgba(124,58,237,.15); }
+body.theme-light .help-feat { background: rgba(0,0,0,.025); border-color: rgba(0,0,0,.07); }
+body.theme-light .help-feat:hover { background: rgba(124,58,237,.04); border-color: rgba(124,58,237,.12); }
+body.theme-light .help-feat strong { color: #1a2a3a; }
+body.theme-light .help-feat p { color: rgba(0,0,0,.5); }
+body.theme-light .help-feat p em { color: #0066cc; }
+body.theme-light .help-table td { color: #2a3a4a; }
+body.theme-light kbd { background: rgba(124,58,237,.08); border-color: rgba(124,58,237,.3); color: #7c3aed; }
+body.theme-light .help-hint { color: rgba(0,0,0,.3); }
+
+/* ══════════════════════════════════════════════════════════════
    FEATURE 5 — Phrase loop button
    ══════════════════════════════════════════════════════════════ */
 .tr-loop-btn {

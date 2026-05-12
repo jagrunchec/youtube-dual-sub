@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Exo+2:wght@300;400;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css?v=14">
+    <link rel="stylesheet" href="style.css?v=15">
 </head>
 <body>
 
@@ -164,6 +164,7 @@
     <div class="user-bar-right">
         <button class="ub-btn" id="btnAdminPanel" onclick="showAdminPanel()" style="display:none">⚙ ADMIN</button>
         <button class="ub-btn" id="btnTheme" onclick="toggleTheme()">☀ THÈME</button>
+        <button class="ub-btn ub-btn-help" onclick="showHelp()" title="Aide &amp; raccourcis">? AIDE</button>
         <button class="ub-btn" onclick="showProfileModal()">👤 PROFIL</button>
         <button class="ub-btn ub-btn-logout" onclick="doLogout()">⏻ DÉCONNEXION</button>
     </div>
@@ -312,6 +313,8 @@
                     <button class="toolbar-btn" onclick="exportSRT(2)">↓ SRT <span id="exportLabel2">02</span></button>
                     <button class="toolbar-btn" onclick="exportTXT()">↓ TXT</button>
                 </div>
+                <div class="toolbar-sep"></div>
+                <button class="toolbar-btn" id="btnCopyUrl" onclick="copyVideoUrl()" title="Copier l'URL YouTube de la vidéo dans le presse-papier">🔗 URL</button>
             </div>
 
             <!-- ═══ TRANSCRIPT PANEL ═══ -->
@@ -370,7 +373,139 @@
     <div class="admin-content" id="adminContent"></div>
 </div>
 
+<!-- ═══ HELP MODAL ═══ -->
+<div class="modal-overlay hidden" id="helpModal">
+    <div class="modal-box help-modal-box">
+        <div class="modal-header">
+            <span class="modal-title">// GUIDE D'UTILISATION</span>
+            <button class="modal-close" onclick="closeHelp()">✕</button>
+        </div>
+        <div class="help-body">
+
+            <div class="help-section">
+                <h3>// RACCOURCIS CLAVIER <span class="help-hint">(actifs pendant la lecture)</span></h3>
+                <table class="help-table">
+                    <tr>
+                        <td><kbd>Espace</kbd> <kbd>K</kbd></td>
+                        <td>Lecture / Pause</td>
+                    </tr>
+                    <tr>
+                        <td><kbd>←</kbd> <kbd>→</kbd></td>
+                        <td>Reculer / Avancer de 5 secondes</td>
+                    </tr>
+                    <tr>
+                        <td><kbd>+</kbd> <kbd>-</kbd></td>
+                        <td>Augmenter / Réduire la vitesse de lecture</td>
+                    </tr>
+                    <tr>
+                        <td><kbd>T</kbd></td>
+                        <td>Afficher / masquer le panneau de transcription</td>
+                    </tr>
+                    <tr>
+                        <td><kbd>L</kbd></td>
+                        <td>Annuler la boucle de phrase active</td>
+                    </tr>
+                    <tr>
+                        <td><kbd>Échap</kbd></td>
+                        <td>Fermer cette fenêtre</td>
+                    </tr>
+                </table>
+            </div>
+
+            <div class="help-section">
+                <h3>// FONCTIONNALITÉS DU LECTEUR</h3>
+                <div class="help-features">
+                    <div class="help-feat">
+                        <span class="help-feat-icon">⏩</span>
+                        <div>
+                            <strong>Vitesse de lecture</strong>
+                            <p>Boutons 0.75× · 1× · 1.25× · 1.5× · 2× dans la barre sous la vidéo. Raccourcis clavier <kbd>+</kbd> / <kbd>-</kbd>.</p>
+                        </div>
+                    </div>
+                    <div class="help-feat">
+                        <span class="help-feat-icon">≡</span>
+                        <div>
+                            <strong>Transcription complète</strong>
+                            <p>Bouton <em>TRANSCRIPTION</em> (raccourci <kbd>T</kbd>). Toutes les lignes défilent en temps réel. Cliquez sur n'importe quelle ligne pour y sauter directement.</p>
+                        </div>
+                    </div>
+                    <div class="help-feat">
+                        <span class="help-feat-icon">⟳</span>
+                        <div>
+                            <strong>Boucle de phrase</strong>
+                            <p>Cliquez le bouton <em>⟳</em> à droite de n'importe quelle ligne pour la répéter indéfiniment. Recliquez ou appuyez <kbd>L</kbd> pour stopper la boucle.</p>
+                        </div>
+                    </div>
+                    <div class="help-feat">
+                        <span class="help-feat-icon">🔍</span>
+                        <div>
+                            <strong>Recherche dans la transcription</strong>
+                            <p>Saisissez un mot dans la barre de recherche du panneau transcription. Naviguez entre les résultats avec les boutons ▲ ▼.</p>
+                        </div>
+                    </div>
+                    <div class="help-feat">
+                        <span class="help-feat-icon">↓</span>
+                        <div>
+                            <strong>Export SRT / TXT</strong>
+                            <p>Téléchargez les sous-titres au format <em>.srt</em> (compatible avec VLC, MPC-HC…) ou <em>.txt</em> interleaved avec les deux pistes entrelacées.</p>
+                        </div>
+                    </div>
+                    <div class="help-feat">
+                        <span class="help-feat-icon">🔗</span>
+                        <div>
+                            <strong>Copier l'URL</strong>
+                            <p>Bouton <em>🔗 URL</em> dans la barre du lecteur. Copie l'URL YouTube de la vidéo en cours dans le presse-papier.</p>
+                        </div>
+                    </div>
+                    <div class="help-feat">
+                        <span class="help-feat-icon">▶</span>
+                        <div>
+                            <strong>Mémorisation de position</strong>
+                            <p>La position est sauvegardée automatiquement toutes les 5 secondes. La prochaine fois que vous ouvrez la même vidéo, un bandeau vous propose de reprendre là où vous étiez.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="help-section">
+                <h3>// FONCTIONNALITÉS GÉNÉRALES</h3>
+                <div class="help-features">
+                    <div class="help-feat">
+                        <span class="help-feat-icon">🌐</span>
+                        <div>
+                            <strong>Mode Immersion</strong>
+                            <p>Cochez <em>Mode Immersion</em> sur l'écran d'accueil. La piste 1 affiche la langue originale de la vidéo (sans traduction), la piste 2 est traduite dans votre langue. Idéal pour l'apprentissage naturel.</p>
+                        </div>
+                    </div>
+                    <div class="help-feat">
+                        <span class="help-feat-icon">⊕</span>
+                        <div>
+                            <strong>Bookmarklet navigateur</strong>
+                            <p>Glissez le lien <em>⊕ DualSub</em> (visible sur la page d'accueil) dans votre barre de favoris. Cliquez-le depuis n'importe quelle page YouTube pour l'ouvrir automatiquement dans DualSub.</p>
+                        </div>
+                    </div>
+                    <div class="help-feat">
+                        <span class="help-feat-icon">☀</span>
+                        <div>
+                            <strong>Thème clair / sombre</strong>
+                            <p>Bouton <em>☀ THÈME</em> dans la barre en haut à droite. Votre choix est mémorisé entre les sessions.</p>
+                        </div>
+                    </div>
+                    <div class="help-feat">
+                        <span class="help-feat-icon">📊</span>
+                        <div>
+                            <strong>Statistiques personnelles</strong>
+                            <p>Ouvrez votre <em>Profil</em> pour consulter le nombre de vidéos vues, votre activité des 8 dernières semaines et vos paires de langues favorites.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
 <script src="https://www.youtube.com/iframe_api"></script>
-<script src="app.js?v=14"></script>
+<script src="app.js?v=15"></script>
 </body>
 </html>
