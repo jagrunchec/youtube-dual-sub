@@ -922,50 +922,44 @@ body {
 /* ── FOCUS mode overlay ─────────────────────────────────────── */
 .focus-overlay {
     position: absolute; inset: 0; z-index: 50;
-    background: rgba(6,6,14,.65);
-    backdrop-filter: blur(3px);
-    display: flex; align-items: center; justify-content: center;
+    background: transparent;
+    display: flex; align-items: flex-end; justify-content: center;
     cursor: pointer;
-    border-radius: 0 0 4px 4px;
-    animation: focus-appear .18s ease;
+    padding-bottom: .6rem;
+    animation: focus-appear .22s ease;
 }
 @keyframes focus-appear {
-    from { opacity: 0; } to { opacity: 1; }
+    from { opacity: 0; transform: translateY(6px); }
+    to   { opacity: 1; transform: translateY(0);   }
 }
 .focus-overlay-content {
-    text-align: center; padding: 1.5rem 2.5rem;
-    background: rgba(9,9,21,.55);
-    border: 1px solid rgba(0,212,255,.2);
-    border-radius: 8px;
-    animation: focus-pulse 2.4s ease-in-out infinite;
+    display: inline-flex; align-items: center; gap: .5rem;
+    padding: .42rem 1.1rem;
+    background: rgba(6,6,14,.72);
+    border: 1px solid rgba(0,212,255,.3);
+    border-radius: 20px;
+    font-family: 'Exo 2', sans-serif; font-size: .82rem;
+    color: rgba(255,255,255,.85);
+    letter-spacing: .06em;
+    animation: focus-pulse 2.6s ease-in-out infinite;
+    pointer-events: none;          /* clicks go to the overlay itself */
 }
 @keyframes focus-pulse {
-    0%,100% { box-shadow: 0 0 0   rgba(0,212,255,0);   }
-    50%      { box-shadow: 0 0 28px rgba(0,212,255,.25); }
+    0%,100% { box-shadow: 0 0 0   rgba(0,212,255,0);    }
+    50%      { box-shadow: 0 0 14px rgba(0,212,255,.28); }
 }
-.focus-overlay-icon {
-    font-size: 2.2rem; color: var(--cyan); display: block; margin-bottom: .4rem;
-}
-.focus-overlay-title {
-    font-family: 'Orbitron', sans-serif; font-size: .72rem;
-    letter-spacing: .22em; color: var(--cyan); margin-bottom: .35rem;
-}
-.focus-overlay-hint {
-    font-family: 'Exo 2', sans-serif; font-size: .8rem;
-    color: rgba(255,255,255,.4);
-}
-.focus-overlay-hint kbd {
-    font-size: .62rem;
+.focus-overlay-content .fo-icon { color: var(--cyan); font-size: .88rem; }
+.focus-overlay-content kbd {
+    font-size: .6rem;
     background: rgba(0,212,255,.1); border-color: rgba(0,212,255,.3); color: #00d4ff;
 }
 /* Light theme */
-body.theme-light .focus-overlay { background: rgba(230,238,255,.7); }
 body.theme-light .focus-overlay-content {
-    background: rgba(240,246,255,.85); border-color: rgba(0,102,204,.25);
+    background: rgba(220,232,255,.82); border-color: rgba(0,102,204,.35);
+    color: #1a3a6e;
 }
-body.theme-light .focus-overlay-title { color: #0066cc; }
-body.theme-light .focus-overlay-hint { color: rgba(0,0,0,.45); }
-body.theme-light .focus-overlay-hint kbd { background: rgba(0,102,204,.08); border-color: rgba(0,102,204,.3); color: #0066cc; }
+body.theme-light .focus-overlay-content .fo-icon { color: #0066cc; }
+body.theme-light .focus-overlay-content kbd { background: rgba(0,102,204,.08); border-color: rgba(0,102,204,.3); color: #0066cc; }
 
 /* ── Export bar (above video) ──────────────────────────────── */
 .export-bar {
