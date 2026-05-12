@@ -480,9 +480,15 @@ public class YouTubeTranscriptService {
         for (int i = 0; i < result.size() - 1; i++) {
             SubtitleEntry curr = result.get(i);
             SubtitleEntry next = result.get(i + 1);
+            // Save speech end BEFORE the gapless pin overwrites durationMs.
+            // speechEndMs = curr.startMs + original interpolated duration
+            // = the last word's ASR-derived end time for this sentence.
+            long speechEnd = curr.getStartMs() + curr.getDurationMs();
             long exact = next.getStartMs() - curr.getStartMs();
             if (exact > 0) {   // skip degenerate case where two sentences share the same ms
-                result.set(i, new SubtitleEntry(curr.getStartMs(), exact, curr.getText()));
+                SubtitleEntry pinned = new SubtitleEntry(curr.getStartMs(), exact, curr.getText());
+                pinned.setSpeechEndMs(speechEnd);
+                result.set(i, pinned);
             }
         }
 

@@ -1846,19 +1846,18 @@ function toggleFocusMode() {
     }
 }
 
-// AUTO-PAUSE timing constants
-// Speech rate: ~55 ms per character ≈ 3 words/second at ~5 chars/word.
-// When the estimated silence after speech is >= FOCUS_MIN_SIL ms we pause
-// midway through that silence; otherwise we fall back to 80 ms before the end.
-const FOCUS_CHAR_MS = 55;
+// AUTO-PAUSE timing constant
+// Minimum silence (ms) needed to move the pause point into the gap rather than
+// keeping it at the end of the entry.
 const FOCUS_MIN_SIL = 350;
 
 /**
  * Called every sync tick when AUTO-PAUSE mode is on and not already paused.
- * Estimates the speech duration from text length to locate the silence gap
- * after each sentence, then pauses midway through that gap.
- * Falls back to 80 ms before the subtitle boundary when no meaningful silence
- * is detected.
+ *
+ * Uses speechEndMs (set by the backend from actual ASR fragment end times)
+ * to locate the silence gap after each sentence and pauses midway through it.
+ * Falls back to 80 ms before the next phrase when no meaningful silence is
+ * present or when speechEndMs is unavailable.
  */
 function checkFocusPause(nowMs) {
     // Use the longer subtitle list for boundary detection
@@ -1875,18 +1874,20 @@ function checkFocusPause(nowMs) {
     if (best < 0 || best >= subs.length - 1) return; // not in a subtitle, or last one
     if (best === _focusPauseSubIdx) return;           // already paused at this boundary
 
-    const s = subs[best];
+    const s        = subs[best];
+    const entryEnd = s.startMs + s.durationMs;          // = next entry start (gapless)
 
-    // Estimate the spoken portion of this entry's duration.
-    // Cap at 90 % so we never overshoot into the silence of a fast speaker.
-    const speechMs  = Math.min((s.text || '').length * FOCUS_CHAR_MS, s.durationMs * 0.90);
-    const silenceMs = s.durationMs - speechMs;
+    // speechEndMs comes from ASR fragment end times saved before the pin-pass.
+    // Fall back to entryEnd when the field is absent or zero (HTTP fallback path).
+    const speechEnd = (s.speechEndMs && s.speechEndMs > s.startMs)
+        ? s.speechEndMs : entryEnd;
+    const silenceMs = entryEnd - speechEnd;
 
-    // If there is a meaningful silence after the speech, pause in the middle of it.
-    // Otherwise fall back to just before the next phrase (original behaviour).
+    // Pause midway through the silence when it is long enough to be perceptible,
+    // otherwise hold until 80 ms before the next phrase starts.
     const pauseAt = silenceMs >= FOCUS_MIN_SIL
-        ? s.startMs + speechMs + silenceMs * 0.5
-        : s.startMs + s.durationMs - 80;
+        ? speechEnd + silenceMs * 0.5
+        : entryEnd - 80;
 
     if (nowMs >= pauseAt) {
         _focusPauseSubIdx = best;
