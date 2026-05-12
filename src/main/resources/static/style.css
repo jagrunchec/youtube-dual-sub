@@ -916,6 +916,57 @@ body {
     margin: 0 -.1rem;
 }
 
+/* ── Video + HUD wrapper (needed for FOCUS overlay) ────────── */
+.player-video-area { position: relative; width: 100%; }
+
+/* ── FOCUS mode overlay ─────────────────────────────────────── */
+.focus-overlay {
+    position: absolute; inset: 0; z-index: 50;
+    background: rgba(6,6,14,.65);
+    backdrop-filter: blur(3px);
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    border-radius: 0 0 4px 4px;
+    animation: focus-appear .18s ease;
+}
+@keyframes focus-appear {
+    from { opacity: 0; } to { opacity: 1; }
+}
+.focus-overlay-content {
+    text-align: center; padding: 1.5rem 2.5rem;
+    background: rgba(9,9,21,.55);
+    border: 1px solid rgba(0,212,255,.2);
+    border-radius: 8px;
+    animation: focus-pulse 2.4s ease-in-out infinite;
+}
+@keyframes focus-pulse {
+    0%,100% { box-shadow: 0 0 0   rgba(0,212,255,0);   }
+    50%      { box-shadow: 0 0 28px rgba(0,212,255,.25); }
+}
+.focus-overlay-icon {
+    font-size: 2.2rem; color: var(--cyan); display: block; margin-bottom: .4rem;
+}
+.focus-overlay-title {
+    font-family: 'Orbitron', sans-serif; font-size: .72rem;
+    letter-spacing: .22em; color: var(--cyan); margin-bottom: .35rem;
+}
+.focus-overlay-hint {
+    font-family: 'Exo 2', sans-serif; font-size: .8rem;
+    color: rgba(255,255,255,.4);
+}
+.focus-overlay-hint kbd {
+    font-size: .62rem;
+    background: rgba(0,212,255,.1); border-color: rgba(0,212,255,.3); color: #00d4ff;
+}
+/* Light theme */
+body.theme-light .focus-overlay { background: rgba(230,238,255,.7); }
+body.theme-light .focus-overlay-content {
+    background: rgba(240,246,255,.85); border-color: rgba(0,102,204,.25);
+}
+body.theme-light .focus-overlay-title { color: #0066cc; }
+body.theme-light .focus-overlay-hint { color: rgba(0,0,0,.45); }
+body.theme-light .focus-overlay-hint kbd { background: rgba(0,102,204,.08); border-color: rgba(0,102,204,.3); color: #0066cc; }
+
 /* ── Export bar (above video) ──────────────────────────────── */
 .export-bar {
     display: flex; align-items: center; flex-wrap: wrap; gap: .45rem;

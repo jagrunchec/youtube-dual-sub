@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Exo+2:wght@300;400;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css?v=18">
+    <link rel="stylesheet" href="style.css?v=19">
 </head>
 <body>
 
@@ -286,26 +286,38 @@
                 <button class="toolbar-btn" id="btnCopyUrl" onclick="copyVideoUrl()" title="Copier l'URL YouTube de la vidéo dans le presse-papier">🔗 URL</button>
             </div>
 
-            <div class="player-wrap">
-                <span class="corner tl"></span><span class="corner tr"></span>
-                <div id="youtubePlayer"></div>
+            <!-- Video + HUD wrapped together so the FOCUS overlay can cover both -->
+            <div class="player-video-area">
+                <div class="player-wrap">
+                    <span class="corner tl"></span><span class="corner tr"></span>
+                    <div id="youtubePlayer"></div>
+                </div>
+                <div class="hud">
+                    <span class="corner bl"></span><span class="corner br"></span>
+                    <div class="hud-statusbar">
+                        <span id="hudStatus" class="hud-status-text"></span>
+                        <span id="hudTime"   class="hud-time-text"></span>
+                    </div>
+                    <div class="hud-track green-track">
+                        <span class="hud-badge green-badge" id="lang1Badge">FR</span>
+                        <span class="hud-text" id="subtitleText1">&nbsp;</span>
+                    </div>
+                    <div class="hud-sep"></div>
+                    <div class="hud-track orange-track">
+                        <span class="hud-badge orange-badge" id="lang2Badge">DE</span>
+                        <span class="hud-text" id="subtitleText2">&nbsp;</span>
+                    </div>
+                </div>
+                <!-- ═══ FOCUS MODE OVERLAY ═══ -->
+                <div class="focus-overlay hidden" id="focusOverlay" onclick="resumeFromFocus()">
+                    <div class="focus-overlay-content">
+                        <div class="focus-overlay-icon">⏸</div>
+                        <p class="focus-overlay-title">// MODE FOCUS</p>
+                        <p class="focus-overlay-hint">Cliquez ici &nbsp;·&nbsp; <kbd>Espace</kbd></p>
+                    </div>
+                </div>
             </div>
-            <div class="hud">
-                <span class="corner bl"></span><span class="corner br"></span>
-                <div class="hud-statusbar">
-                    <span id="hudStatus" class="hud-status-text"></span>
-                    <span id="hudTime"   class="hud-time-text"></span>
-                </div>
-                <div class="hud-track green-track">
-                    <span class="hud-badge green-badge" id="lang1Badge">FR</span>
-                    <span class="hud-text" id="subtitleText1">&nbsp;</span>
-                </div>
-                <div class="hud-sep"></div>
-                <div class="hud-track orange-track">
-                    <span class="hud-badge orange-badge" id="lang2Badge">DE</span>
-                    <span class="hud-text" id="subtitleText2">&nbsp;</span>
-                </div>
-            </div>
+
             <!-- ═══ PLAYER TOOLBAR (below video) ═══ -->
             <div class="player-toolbar" id="playerToolbar">
                 <div class="speed-bar">
@@ -316,6 +328,8 @@
                     <button class="speed-btn" data-rate="1.5"  onclick="setSpeed(1.5)">1.5×</button>
                     <button class="speed-btn" data-rate="2"    onclick="setSpeed(2)">2×</button>
                 </div>
+                <div class="toolbar-sep"></div>
+                <button class="toolbar-btn" id="btnFocus"      onclick="toggleFocusMode()">⏸ FOCUS</button>
                 <div class="toolbar-sep"></div>
                 <button class="toolbar-btn" id="btnTranscript" onclick="toggleTranscript()">≡ TRANSCRIPTION</button>
             </div>
@@ -454,6 +468,13 @@
                         </div>
                     </div>
                     <div class="help-feat">
+                        <span class="help-feat-icon">⏸</span>
+                        <div>
+                            <strong>Mode Focus</strong>
+                            <p>Bouton <em>⏸ FOCUS</em> dans la barre du lecteur. La vidéo se met en pause à chaque frontière de phrase. Cliquez sur l'overlay ou appuyez <kbd>Espace</kbd> pour continuer. Idéal pour écouter, traiter et répéter chaque phrase avant de passer à la suivante.</p>
+                        </div>
+                    </div>
+                    <div class="help-feat">
                         <span class="help-feat-icon">🔗</span>
                         <div>
                             <strong>Copier l'URL</strong>
@@ -509,6 +530,6 @@
 </div>
 
 <script src="https://www.youtube.com/iframe_api"></script>
-<script src="app.js?v=18"></script>
+<script src="app.js?v=19"></script>
 </body>
 </html>

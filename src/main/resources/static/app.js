@@ -619,6 +619,9 @@ let transcriptVisible  = false;  // transcript panel open?
 let lastTranscriptIdx  = -1;     // last highlighted transcript row
 let loopStart          = null;   // phrase-loop start ms (null = off)
 let loopEnd            = null;   // phrase-loop end ms
+let focusMode          = false;  // MODE FOCUS on/off
+let focusPaused        = false;  // currently waiting for user click
+let _focusPauseSubIdx  = -1;     // subtitle index at which we last paused
 let _currentVideoId    = null;   // video currently loaded
 let _positionTimer     = null;   // setInterval handle for position autosave
 let _pendingResume     = null;   // saved position ms to offer as resume
@@ -1291,6 +1294,7 @@ function processVideo() {
 function showPlayer(videoId) {
     _currentVideoId = videoId;
     clearLoop();
+    focusPaused = false; _focusPauseSubIdx = -1;
     searchMatches = []; searchIndex = -1;
     if (document.getElementById('transcriptSearch')) {
         document.getElementById('transcriptSearch').value = '';
@@ -1391,6 +1395,7 @@ function syncSubtitles() {
     document.getElementById('subtitleText2').textContent = find(subtitles2, nowMs);
     document.getElementById('hudTime').textContent = formatMs(nowMs);
     syncTranscriptScroll(nowMs);
+    if (focusMode && !focusPaused) checkFocusPause(nowMs);
 }
 
 function find(list, nowMs) {
@@ -1543,9 +1548,12 @@ function resetApp() {
     stopSync();
     stopPositionSaving();
     clearLoop();
+    focusMode = false; focusPaused = false; _focusPauseSubIdx = -1;
     searchMatches = []; searchIndex = -1;
     _pendingResume = null;
     _currentVideoId = null;
+    document.getElementById('focusOverlay').classList.add('hidden');
+    document.getElementById('btnFocus').classList.remove('tb-active');
     subtitles1 = [];
     subtitles2 = [];
     // Hide resume toast
@@ -1631,6 +1639,7 @@ function initKeyboardShortcuts() {
             case ' ':
             case 'k':
                 e.preventDefault();
+                if (focusPaused) { resumeFromFocus(); break; }
                 player.getPlayerState() === YT.PlayerState.PLAYING
                     ? player.pauseVideo() : player.playVideo();
                 break;
@@ -1810,6 +1819,62 @@ async function loadUserStats() {
         if (!resp.ok) return null;
         return await resp.json();
     } catch (e) { return null; }
+}
+
+/* ══════════════════════════════════════════════════════════════
+   MODE FOCUS — pause at every sentence boundary
+   ══════════════════════════════════════════════════════════════ */
+
+function toggleFocusMode() {
+    focusMode = !focusMode;
+    _focusPauseSubIdx = -1;
+    document.getElementById('btnFocus').classList.toggle('tb-active', focusMode);
+    if (!focusMode) {
+        // Exiting focus: hide overlay and ensure playback continues
+        focusPaused = false;
+        document.getElementById('focusOverlay').classList.add('hidden');
+        if (player && typeof player.getPlayerState === 'function'
+            && player.getPlayerState() !== YT.PlayerState.PLAYING) {
+            player.playVideo();
+        }
+    }
+}
+
+/**
+ * Called every sync tick when focus mode is on and not already paused.
+ * Pauses the video 80 ms before the end of the current subtitle so the
+ * user has a moment to read the phrase before the next one begins.
+ */
+function checkFocusPause(nowMs) {
+    // Use the longer subtitle list for boundary detection
+    const subs = subtitles1.length >= subtitles2.length ? subtitles1 : subtitles2;
+    if (subs.length < 2) return;
+
+    // Binary search: last entry whose startMs ≤ nowMs
+    let lo = 0, hi = subs.length - 1, best = -1;
+    while (lo <= hi) {
+        const mid = (lo + hi) >> 1;
+        if (subs[mid].startMs <= nowMs) { best = mid; lo = mid + 1; }
+        else hi = mid - 1;
+    }
+    if (best < 0 || best >= subs.length - 1) return; // not in a subtitle, or last one
+    if (best === _focusPauseSubIdx) return;           // already paused at this boundary
+
+    const s = subs[best];
+    const endMs = s.startMs + s.durationMs;
+    if (nowMs >= endMs - 80) {              // within 80 ms of boundary
+        _focusPauseSubIdx = best;
+        player.pauseVideo();
+        focusPaused = true;
+        document.getElementById('focusOverlay').classList.remove('hidden');
+    }
+}
+
+function resumeFromFocus() {
+    if (!focusPaused) return;
+    focusPaused = false;
+    document.getElementById('focusOverlay').classList.add('hidden');
+    if (player && typeof player.playVideo === 'function') player.playVideo();
 }
 
 /* ══════════════════════════════════════════════════════════════
