@@ -1372,6 +1372,12 @@ function onPlayerStateChange(ev) {
         _pendingResume = null;
         if (posMs > 10000) showResumeToast(posMs);
     }
+    // AUTO-PAUSE: if the user manually resumes via the YouTube player, clear the
+    // paused state so subtitle sync and future auto-pauses work normally again.
+    if (ev.data === YT.PlayerState.PLAYING && focusPaused) {
+        focusPaused = false;
+        document.getElementById('focusOverlay').classList.add('hidden');
+    }
 }
 
 function startSync() {
