@@ -619,7 +619,7 @@ let transcriptVisible  = false;  // transcript panel open?
 let lastTranscriptIdx  = -1;     // last highlighted transcript row
 let loopStart          = null;   // phrase-loop start ms (null = off)
 let loopEnd            = null;   // phrase-loop end ms
-let focusMode          = false;  // MODE FOCUS on/off
+let focusMode          = false;  // AUTO-PAUSE mode on/off
 let focusPaused        = false;  // currently waiting for user click
 let _focusPauseSubIdx  = -1;     // subtitle index at which we last paused
 let _currentVideoId    = null;   // video currently loaded
@@ -1822,7 +1822,7 @@ async function loadUserStats() {
 }
 
 /* ══════════════════════════════════════════════════════════════
-   MODE FOCUS — pause at every sentence boundary
+   AUTO-PAUSE — pause at every sentence boundary for language learners
    ══════════════════════════════════════════════════════════════ */
 
 function toggleFocusMode() {

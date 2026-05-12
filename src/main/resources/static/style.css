@@ -919,47 +919,38 @@ body {
 /* ── Video + HUD wrapper (needed for FOCUS overlay) ────────── */
 .player-video-area { position: relative; width: 100%; }
 
-/* ── FOCUS mode overlay ─────────────────────────────────────── */
-.focus-overlay {
-    position: absolute; inset: 0; z-index: 50;
-    background: transparent;
-    display: flex; align-items: flex-end; justify-content: center;
+/* ── AUTO-PAUSE resume bar (between HUD and toolbar) ────────── */
+.focus-resume-bar {
+    display: flex; align-items: center; justify-content: center; gap: .55rem;
+    width: 100%; padding: .55rem 1rem;
+    background: rgba(0,212,255,.07);
+    border-left: 1px solid rgba(0,212,255,.18);
+    border-right: 1px solid rgba(0,212,255,.18);
     cursor: pointer;
-    padding-bottom: .6rem;
-    animation: focus-appear .22s ease;
-}
-@keyframes focus-appear {
-    from { opacity: 0; transform: translateY(6px); }
-    to   { opacity: 1; transform: translateY(0);   }
-}
-.focus-overlay-content {
-    display: inline-flex; align-items: center; gap: .5rem;
-    padding: .42rem 1.1rem;
-    background: rgba(6,6,14,.72);
-    border: 1px solid rgba(0,212,255,.3);
-    border-radius: 20px;
     font-family: 'Exo 2', sans-serif; font-size: .82rem;
-    color: rgba(255,255,255,.85);
-    letter-spacing: .06em;
-    animation: focus-pulse 2.6s ease-in-out infinite;
-    pointer-events: none;          /* clicks go to the overlay itself */
+    color: rgba(255,255,255,.8);
+    letter-spacing: .07em;
+    animation: focus-appear .2s ease;
+    transition: background .15s;
 }
-@keyframes focus-pulse {
-    0%,100% { box-shadow: 0 0 0   rgba(0,212,255,0);    }
-    50%      { box-shadow: 0 0 14px rgba(0,212,255,.28); }
+.focus-resume-bar:hover { background: rgba(0,212,255,.14); color: #fff; }
+@keyframes focus-appear {
+    from { opacity: 0; transform: translateY(-4px); }
+    to   { opacity: 1; transform: translateY(0);    }
 }
-.focus-overlay-content .fo-icon { color: var(--cyan); font-size: .88rem; }
-.focus-overlay-content kbd {
-    font-size: .6rem;
+.focus-resume-bar .fo-icon { color: var(--cyan); font-size: .9rem; }
+.focus-resume-bar kbd {
+    font-size: .62rem;
     background: rgba(0,212,255,.1); border-color: rgba(0,212,255,.3); color: #00d4ff;
 }
 /* Light theme */
-body.theme-light .focus-overlay-content {
-    background: rgba(220,232,255,.82); border-color: rgba(0,102,204,.35);
+body.theme-light .focus-resume-bar {
+    background: rgba(0,102,204,.07); border-color: rgba(0,102,204,.2);
     color: #1a3a6e;
 }
-body.theme-light .focus-overlay-content .fo-icon { color: #0066cc; }
-body.theme-light .focus-overlay-content kbd { background: rgba(0,102,204,.08); border-color: rgba(0,102,204,.3); color: #0066cc; }
+body.theme-light .focus-resume-bar:hover { background: rgba(0,102,204,.13); }
+body.theme-light .focus-resume-bar .fo-icon { color: #0066cc; }
+body.theme-light .focus-resume-bar kbd { background: rgba(0,102,204,.08); border-color: rgba(0,102,204,.3); color: #0066cc; }
 
 /* ── Export bar (above video) ──────────────────────────────── */
 .export-bar {

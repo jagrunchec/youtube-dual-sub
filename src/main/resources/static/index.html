@@ -286,7 +286,7 @@
                 <button class="toolbar-btn" id="btnCopyUrl" onclick="copyVideoUrl()" title="Copier l'URL YouTube de la vidéo dans le presse-papier">🔗 URL</button>
             </div>
 
-            <!-- Video + HUD wrapped together so the FOCUS overlay can cover both -->
+            <!-- Video + HUD wrapped together -->
             <div class="player-video-area">
                 <div class="player-wrap">
                     <span class="corner tl"></span><span class="corner tr"></span>
@@ -308,13 +308,12 @@
                         <span class="hud-text" id="subtitleText2">&nbsp;</span>
                     </div>
                 </div>
-                <!-- ═══ FOCUS MODE OVERLAY ═══ -->
-                <div class="focus-overlay hidden" id="focusOverlay" onclick="resumeFromFocus()">
-                    <div class="focus-overlay-content">
-                        <span class="fo-icon">&#9654;</span>
-                        PARTIE SUIVANTE &nbsp;&middot;&nbsp; <kbd>Espace</kbd>
-                    </div>
-                </div>
+            </div>
+
+            <!-- ═══ AUTO-PAUSE RESUME BAR (below subtitles, above toolbar) ═══ -->
+            <div class="focus-resume-bar hidden" id="focusOverlay" onclick="resumeFromFocus()">
+                <span class="fo-icon">&#9654;</span>
+                PARTIE SUIVANTE &nbsp;&middot;&nbsp; <kbd>Espace</kbd>
             </div>
 
             <!-- ═══ PLAYER TOOLBAR (below video) ═══ -->
@@ -328,7 +327,7 @@
                     <button class="speed-btn" data-rate="2"    onclick="setSpeed(2)">2×</button>
                 </div>
                 <div class="toolbar-sep"></div>
-                <button class="toolbar-btn" id="btnFocus"      onclick="toggleFocusMode()">⏸ FOCUS</button>
+                <button class="toolbar-btn" id="btnFocus"      onclick="toggleFocusMode()">⏸ AUTO-PAUSE</button>
                 <div class="toolbar-sep"></div>
                 <button class="toolbar-btn" id="btnTranscript" onclick="toggleTranscript()">≡ TRANSCRIPTION</button>
             </div>
@@ -469,8 +468,8 @@
                     <div class="help-feat">
                         <span class="help-feat-icon">⏸</span>
                         <div>
-                            <strong>Mode Focus</strong>
-                            <p>Bouton <em>⏸ FOCUS</em> dans la barre du lecteur. La vidéo se met en pause à chaque frontière de phrase. Cliquez sur l'overlay ou appuyez <kbd>Espace</kbd> pour continuer. Idéal pour écouter, traiter et répéter chaque phrase avant de passer à la suivante.</p>
+                            <strong>Auto-Pause</strong>
+                            <p>Bouton <em>⏸ AUTO-PAUSE</em> dans la barre du lecteur. La vidéo se met automatiquement en pause à la fin de chaque phrase. Une barre apparaît sous les sous-titres — cliquez dessus ou appuyez <kbd>Espace</kbd> pour passer à la phrase suivante. Idéal pour les apprenants de niveau intermédiaire qui souhaitent écouter, comprendre et répéter chaque phrase à leur rythme.</p>
                         </div>
                     </div>
                     <div class="help-feat">
