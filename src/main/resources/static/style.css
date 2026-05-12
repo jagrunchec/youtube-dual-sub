@@ -803,7 +803,7 @@ body {
     width: 100%;
     border: 1px solid rgba(0,212,255,.3);
     border-bottom: none;
-    border-radius: 4px 4px 0 0;
+    border-radius: 0;
     overflow: hidden;
     background: #000;
     box-shadow:
@@ -916,7 +916,21 @@ body {
     margin: 0 -.1rem;
 }
 
-/* ── Player toolbar ────────────────────────────────────────── */
+/* ── Export bar (above video) ──────────────────────────────── */
+.export-bar {
+    display: flex; align-items: center; flex-wrap: wrap; gap: .45rem;
+    padding: .4rem .8rem;
+    background: rgba(0,0,0,.3);
+    border: 1px solid rgba(0,212,255,.12);
+    border-bottom: none;
+    border-radius: 4px 4px 0 0;
+}
+body.theme-light .export-bar {
+    background: rgba(240,245,255,.92);
+    border-color: rgba(0,102,204,.15);
+}
+
+/* ── Player toolbar (below video / HUD) ────────────────────── */
 .player-toolbar {
     display: flex; align-items: center; flex-wrap: wrap; gap: .45rem;
     padding: .5rem .8rem;

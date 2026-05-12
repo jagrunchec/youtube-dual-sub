@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Exo+2:wght@300;400;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css?v=17">
+    <link rel="stylesheet" href="style.css?v=18">
 </head>
 <body>
 
@@ -274,6 +274,18 @@
 
     <div class="player-layout hidden" id="playerLayout">
         <section class="player-section" id="playerSection">
+            <!-- ═══ EXPORT BAR (above video) ═══ -->
+            <div class="export-bar">
+                <div class="export-group">
+                    <span class="tb-label">EXPORT</span>
+                    <button class="toolbar-btn" onclick="exportSRT(1)">↓ SRT <span id="exportLabel1">01</span></button>
+                    <button class="toolbar-btn" onclick="exportSRT(2)">↓ SRT <span id="exportLabel2">02</span></button>
+                    <button class="toolbar-btn" onclick="exportTXT()">↓ TXT</button>
+                </div>
+                <div class="toolbar-sep"></div>
+                <button class="toolbar-btn" id="btnCopyUrl" onclick="copyVideoUrl()" title="Copier l'URL YouTube de la vidéo dans le presse-papier">🔗 URL</button>
+            </div>
+
             <div class="player-wrap">
                 <span class="corner tl"></span><span class="corner tr"></span>
                 <div id="youtubePlayer"></div>
@@ -294,7 +306,7 @@
                     <span class="hud-text" id="subtitleText2">&nbsp;</span>
                 </div>
             </div>
-            <!-- ═══ PLAYER TOOLBAR ═══ -->
+            <!-- ═══ PLAYER TOOLBAR (below video) ═══ -->
             <div class="player-toolbar" id="playerToolbar">
                 <div class="speed-bar">
                     <span class="tb-label">VITESSE</span>
@@ -306,15 +318,6 @@
                 </div>
                 <div class="toolbar-sep"></div>
                 <button class="toolbar-btn" id="btnTranscript" onclick="toggleTranscript()">≡ TRANSCRIPTION</button>
-                <div class="toolbar-sep"></div>
-                <div class="export-group">
-                    <span class="tb-label">EXPORT</span>
-                    <button class="toolbar-btn" onclick="exportSRT(1)">↓ SRT <span id="exportLabel1">01</span></button>
-                    <button class="toolbar-btn" onclick="exportSRT(2)">↓ SRT <span id="exportLabel2">02</span></button>
-                    <button class="toolbar-btn" onclick="exportTXT()">↓ TXT</button>
-                </div>
-                <div class="toolbar-sep"></div>
-                <button class="toolbar-btn" id="btnCopyUrl" onclick="copyVideoUrl()" title="Copier l'URL YouTube de la vidéo dans le presse-papier">🔗 URL</button>
             </div>
 
             <!-- ═══ TRANSCRIPT PANEL ═══ -->
@@ -506,6 +509,6 @@
 </div>
 
 <script src="https://www.youtube.com/iframe_api"></script>
-<script src="app.js?v=17"></script>
+<script src="app.js?v=18"></script>
 </body>
 </html>
