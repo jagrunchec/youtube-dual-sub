@@ -283,6 +283,10 @@ function showProfileModal() {
 
     document.getElementById('profileModalBody').innerHTML = `
         <div class="profile-section">
+            <h3>// MES STATISTIQUES</h3>
+            <div id="pfStatsContent" class="stats-loading">Chargement…</div>
+        </div>` + `
+        <div class="profile-section">
             <h3>// INFORMATIONS PERSONNELLES</h3>
             <div class="profile-row2">
                 <div class="pf"><label>PRÉNOM</label><input id="pfFirstName" value="${esc(u.firstName)}"></div>
@@ -339,6 +343,12 @@ function showProfileModal() {
         </div>`;
 
     document.getElementById('profileModal').classList.remove('hidden');
+
+    // Load and inject personal stats (async)
+    loadUserStats().then(stats => {
+        const el = document.getElementById('pfStatsContent');
+        if (el) el.innerHTML = renderStatsSection(stats);
+    });
 }
 
 function closeProfileModal() {
@@ -603,6 +613,14 @@ let historyExpanded = true;   // whether the history panel is expanded
 let currentSpeed       = 1;      // current playback rate
 let transcriptVisible  = false;  // transcript panel open?
 let lastTranscriptIdx  = -1;     // last highlighted transcript row
+let loopStart          = null;   // phrase-loop start ms (null = off)
+let loopEnd            = null;   // phrase-loop end ms
+let _currentVideoId    = null;   // video currently loaded
+let _positionTimer     = null;   // setInterval handle for position autosave
+let _pendingResume     = null;   // saved position ms to offer as resume
+let searchMatches      = [];     // transcript row indices matching current search
+let searchIndex        = -1;     // which match is active
+let currentTheme       = localStorage.getItem('dualsubTheme') || 'dark';
 
 const LANG_LABELS = {
     fr: 'Français', en: 'English', es: 'Español',
@@ -862,6 +880,8 @@ function setCanvasFavicon() {
 document.addEventListener('DOMContentLoaded', async () => {
     setCanvasFavicon();
     applyI18n();
+    initTheme();
+    initKeyboardShortcuts();
 
     // Load security questions and populate profile fields for the registration form
     loadSecurityQuestions();
@@ -1265,6 +1285,14 @@ function processVideo() {
 
 /* ─── YouTube Player ────────────────────────────────────────── */
 function showPlayer(videoId) {
+    _currentVideoId = videoId;
+    clearLoop();
+    searchMatches = []; searchIndex = -1;
+    if (document.getElementById('transcriptSearch')) {
+        document.getElementById('transcriptSearch').value = '';
+        document.getElementById('searchCount').textContent = '';
+    }
+
     const app         = document.querySelector('.app');
     const histPanel   = document.getElementById('historyPanel');
     const playerLayout = document.getElementById('playerLayout');
@@ -1294,6 +1322,10 @@ function showPlayer(videoId) {
     document.getElementById('trHead2').textContent = l2;
     renderTranscript();
     lastTranscriptIdx = -1;
+
+    // Position memory: offer resume if we have a saved position > 10 s
+    _pendingResume = getSavedPosition(videoId);
+    startPositionSaving();
 
     startSync();
 
@@ -1326,6 +1358,12 @@ function onPlayerStateChange(ev) {
     if (ev.data === YT.PlayerState.PLAYING && currentSpeed !== 1) {
         player.setPlaybackRate(currentSpeed);
     }
+    // Offer to resume saved position on first PLAYING event
+    if (ev.data === YT.PlayerState.PLAYING && _pendingResume !== null) {
+        const posMs = _pendingResume;
+        _pendingResume = null;
+        if (posMs > 10000) showResumeToast(posMs);
+    }
 }
 
 function startSync() {
@@ -1340,6 +1378,11 @@ function stopSync() {
 function syncSubtitles() {
     if (!player || typeof player.getCurrentTime !== 'function') return;
     const nowMs = player.getCurrentTime() * 1000;
+    // ── Phrase loop ──────────────────────────────────────────────
+    if (loopStart !== null && nowMs >= loopEnd) {
+        player.seekTo(loopStart / 1000, true);
+        return;
+    }
     document.getElementById('subtitleText1').textContent = find(subtitles1, nowMs);
     document.getElementById('subtitleText2').textContent = find(subtitles2, nowMs);
     document.getElementById('hudTime').textContent = formatMs(nowMs);
@@ -1396,7 +1439,8 @@ function renderTranscript() {
     for (let i = 0; i < len; i++) {
         const s1 = subtitles1[i];
         const s2 = subtitles2[i];
-        const startMs = s1 ? s1.startMs : s2.startMs;
+        const startMs  = s1 ? s1.startMs  : s2.startMs;
+        const durMs    = s1 ? s1.durationMs : (s2 ? s2.durationMs : 3000);
         const row = document.createElement('div');
         row.className = 'tr-row';
         row.dataset.index   = i;
@@ -1405,11 +1449,17 @@ function renderTranscript() {
             `<span class="tr-time">${formatMs(startMs)}</span>` +
             `<span class="tr-text tr-text1">${esc(s1 ? s1.text : '')}</span>` +
             `<span class="tr-sep"></span>` +
-            `<span class="tr-text tr-text2">${esc(s2 ? s2.text : '')}</span>`;
+            `<span class="tr-text tr-text2">${esc(s2 ? s2.text : '')}</span>` +
+            `<button class="tr-loop-btn" title="Boucler cette phrase (L pour annuler)">⟳</button>`;
+        // Seek on row click
         row.addEventListener('click', () => {
-            if (player && typeof player.seekTo === 'function') {
-                player.seekTo(startMs / 1000, true);
-            }
+            if (player && typeof player.seekTo === 'function') player.seekTo(startMs / 1000, true);
+        });
+        // Loop toggle on ⟳ button
+        const loopBtn = row.querySelector('.tr-loop-btn');
+        loopBtn.addEventListener('click', ev => {
+            ev.stopPropagation();
+            toggleLoop(startMs, durMs, loopBtn);
         });
         frag.appendChild(row);
     }
@@ -1487,8 +1537,15 @@ function downloadFile(content, filename, mime) {
 /* ─── Reset ─────────────────────────────────────────────────── */
 function resetApp() {
     stopSync();
+    stopPositionSaving();
+    clearLoop();
+    searchMatches = []; searchIndex = -1;
+    _pendingResume = null;
+    _currentVideoId = null;
     subtitles1 = [];
     subtitles2 = [];
+    // Hide resume toast
+    document.getElementById('resumeToast').classList.add('hidden');
     // Reset speed UI (keep currentSpeed for next video)
     // Reset transcript
     transcriptVisible = false;
@@ -1496,6 +1553,10 @@ function resetApp() {
     document.getElementById('transcriptPanel').classList.add('hidden');
     document.getElementById('btnTranscript').classList.remove('tb-active');
     document.getElementById('transcriptInner').innerHTML = '';
+    if (document.getElementById('transcriptSearch')) {
+        document.getElementById('transcriptSearch').value = '';
+        document.getElementById('searchCount').textContent = '';
+    }
     document.getElementById('subtitleText1').textContent = '';
     document.getElementById('subtitleText2').textContent = '';
     document.getElementById('hudStatus').textContent = '';
@@ -1536,3 +1597,248 @@ function hideError() {
 }
 
 function onYouTubeIframeAPIReady() {}
+
+/* ══════════════════════════════════════════════════════════════
+   FEATURE 4 — Keyboard shortcuts
+   Space / k  → play/pause
+   ← / →      → ±5 s
+   + / =      → speed up
+   -          → speed down
+   t / T      → toggle transcript
+   l / L      → clear phrase loop
+   ══════════════════════════════════════════════════════════════ */
+function initKeyboardShortcuts() {
+    document.addEventListener('keydown', e => {
+        // Only when the player layout is visible
+        if (document.getElementById('playerLayout').classList.contains('hidden')) return;
+        if (!player || typeof player.getPlayerState !== 'function') return;
+        // Ignore when focus is inside a text field
+        const tag = (e.target.tagName || '').toLowerCase();
+        if (['input', 'textarea', 'select'].includes(tag)) return;
+
+        const RATES = [0.75, 1, 1.25, 1.5, 2];
+        switch (e.key) {
+            case ' ':
+            case 'k':
+                e.preventDefault();
+                player.getPlayerState() === YT.PlayerState.PLAYING
+                    ? player.pauseVideo() : player.playVideo();
+                break;
+            case 'ArrowLeft':
+                e.preventDefault();
+                player.seekTo(Math.max(0, player.getCurrentTime() - 5), true);
+                break;
+            case 'ArrowRight':
+                e.preventDefault();
+                player.seekTo(player.getCurrentTime() + 5, true);
+                break;
+            case '+': case '=':
+                e.preventDefault();
+                { const idx = RATES.indexOf(currentSpeed);
+                  if (idx < RATES.length - 1) setSpeed(RATES[idx + 1]); }
+                break;
+            case '-':
+                e.preventDefault();
+                { const idx = RATES.indexOf(currentSpeed);
+                  if (idx > 0) setSpeed(RATES[idx - 1]); }
+                break;
+            case 't': case 'T':
+                e.preventDefault();
+                toggleTranscript();
+                break;
+            case 'l': case 'L':
+                e.preventDefault();
+                clearLoop();
+                break;
+        }
+    });
+}
+
+/* ══════════════════════════════════════════════════════════════
+   FEATURE 5 — Phrase loop
+   ══════════════════════════════════════════════════════════════ */
+function toggleLoop(startMs, durMs, btn) {
+    if (loopStart === startMs) {
+        clearLoop();
+    } else {
+        loopStart = startMs;
+        loopEnd   = startMs + durMs;
+        document.querySelectorAll('.tr-loop-btn').forEach(b => b.classList.remove('loop-active'));
+        btn.classList.add('loop-active');
+        if (player && typeof player.seekTo === 'function') player.seekTo(startMs / 1000, true);
+    }
+}
+
+function clearLoop() {
+    loopStart = null;
+    loopEnd   = null;
+    document.querySelectorAll('.tr-loop-btn').forEach(b => b.classList.remove('loop-active'));
+}
+
+/* ══════════════════════════════════════════════════════════════
+   FEATURE 6 — Position memory
+   ══════════════════════════════════════════════════════════════ */
+function savePosition(videoId, posMs) {
+    if (!videoId || posMs < 5000) return;
+    try {
+        const data = JSON.parse(localStorage.getItem('dualsubPos') || '{}');
+        data[videoId] = Math.floor(posMs);
+        // Keep at most 50 entries
+        const keys = Object.keys(data);
+        if (keys.length > 50) delete data[keys[0]];
+        localStorage.setItem('dualsubPos', JSON.stringify(data));
+    } catch (e) { /* silent */ }
+}
+
+function getSavedPosition(videoId) {
+    try {
+        const data = JSON.parse(localStorage.getItem('dualsubPos') || '{}');
+        return data[videoId] || null;
+    } catch (e) { return null; }
+}
+
+function startPositionSaving() {
+    stopPositionSaving();
+    _positionTimer = setInterval(() => {
+        if (_currentVideoId && player && typeof player.getCurrentTime === 'function') {
+            savePosition(_currentVideoId, player.getCurrentTime() * 1000);
+        }
+    }, 5000);
+}
+
+function stopPositionSaving() {
+    if (_positionTimer) { clearInterval(_positionTimer); _positionTimer = null; }
+}
+
+function showResumeToast(posMs) {
+    const toast = document.getElementById('resumeToast');
+    if (!toast) return;
+    document.getElementById('resumeTime').textContent = formatMs(posMs);
+    toast.classList.remove('hidden');
+    document.getElementById('btnResume').onclick = () => {
+        if (player && typeof player.seekTo === 'function') player.seekTo(posMs / 1000, true);
+        toast.classList.add('hidden');
+    };
+    document.getElementById('btnResumeIgnore').onclick = () => toast.classList.add('hidden');
+    // Auto-dismiss after 8 s
+    setTimeout(() => toast.classList.add('hidden'), 8000);
+}
+
+/* ══════════════════════════════════════════════════════════════
+   FEATURE 7 — Transcript search
+   ══════════════════════════════════════════════════════════════ */
+function searchTranscript() {
+    const q = (document.getElementById('transcriptSearch')?.value || '').trim().toLowerCase();
+    searchMatches = [];
+    searchIndex   = -1;
+    document.querySelectorAll('#transcriptInner .tr-row').forEach(row => {
+        row.classList.remove('tr-match', 'tr-match-current');
+        if (!q) return;
+        const t1 = (row.querySelector('.tr-text1')?.textContent || '').toLowerCase();
+        const t2 = (row.querySelector('.tr-text2')?.textContent || '').toLowerCase();
+        if (t1.includes(q) || t2.includes(q)) {
+            row.classList.add('tr-match');
+            searchMatches.push(parseInt(row.dataset.index, 10));
+        }
+    });
+    if (searchMatches.length > 0) { searchIndex = 0; scrollToSearchMatch(); }
+    updateSearchCount();
+}
+
+function navigateSearch(dir) {
+    if (!searchMatches.length) return;
+    searchIndex = (searchIndex + dir + searchMatches.length) % searchMatches.length;
+    scrollToSearchMatch();
+    updateSearchCount();
+}
+
+function scrollToSearchMatch() {
+    document.querySelectorAll('#transcriptInner .tr-row').forEach(r => r.classList.remove('tr-match-current'));
+    if (searchIndex < 0 || searchIndex >= searchMatches.length) return;
+    const row = document.querySelector(`#transcriptInner .tr-row[data-index="${searchMatches[searchIndex]}"]`);
+    if (row) {
+        row.classList.add('tr-match-current');
+        row.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    }
+}
+
+function updateSearchCount() {
+    const el = document.getElementById('searchCount');
+    if (!el) return;
+    const q = document.getElementById('transcriptSearch')?.value || '';
+    el.textContent = q
+        ? (searchMatches.length > 0 ? `${searchIndex + 1}/${searchMatches.length}` : '0')
+        : '';
+}
+
+/* ══════════════════════════════════════════════════════════════
+   FEATURE 8 — Light / dark theme
+   ══════════════════════════════════════════════════════════════ */
+function initTheme() {
+    if (currentTheme === 'light') document.body.classList.add('theme-light');
+    updateThemeBtn();
+}
+
+function toggleTheme() {
+    currentTheme = currentTheme === 'dark' ? 'light' : 'dark';
+    document.body.classList.toggle('theme-light', currentTheme === 'light');
+    localStorage.setItem('dualsubTheme', currentTheme);
+    updateThemeBtn();
+}
+
+function updateThemeBtn() {
+    const btn = document.getElementById('btnTheme');
+    if (btn) btn.textContent = currentTheme === 'dark' ? '☀ THÈME' : '🌙 THÈME';
+}
+
+/* ══════════════════════════════════════════════════════════════
+   FEATURE 9 — Personal stats (backend already done)
+   ══════════════════════════════════════════════════════════════ */
+async function loadUserStats() {
+    try {
+        const resp = await fetch('/api/users/me/stats');
+        if (!resp.ok) return null;
+        return await resp.json();
+    } catch (e) { return null; }
+}
+
+function renderStatsSection(stats) {
+    if (!stats) {
+        return '<p style="color:rgba(255,255,255,.35);font-size:.8rem">Statistiques non disponibles.</p>';
+    }
+    const maxWeek = Math.max(...stats.weeklyHistory.map(w => w.count), 1);
+    const bars = stats.weeklyHistory.map(w => `
+        <div class="stats-week-col">
+            <div class="stats-bar-wrap">
+                <div class="stats-bar-fill" style="height:${Math.round(w.count / maxWeek * 100)}%"></div>
+            </div>
+            <div class="stats-week-lbl">${esc(w.label)}</div>
+            <div class="stats-week-cnt">${w.count}</div>
+        </div>`).join('');
+
+    const pairs = stats.topPairs.length
+        ? `<div class="stats-chart-label">// PAIRES PRÉFÉRÉES</div>
+           <div class="stats-pairs">` +
+          stats.topPairs.map(p =>
+            `<div class="stats-pair">
+                <span class="stats-pair-name">${esc(p.pair)}</span>
+                <span class="stats-pair-cnt">${p.count}×</span>
+             </div>`).join('') +
+          `</div>`
+        : '';
+
+    return `
+        <div class="stats-kpi-row">
+            <div class="stats-kpi">
+                <div class="stats-kpi-val">${stats.totalVideos}</div>
+                <div class="stats-kpi-lbl">Vidéos vues</div>
+            </div>
+            <div class="stats-kpi">
+                <div class="stats-kpi-val">${stats.videosThisWeek}</div>
+                <div class="stats-kpi-lbl">Cette semaine</div>
+            </div>
+        </div>
+        <div class="stats-chart-label">// ACTIVITÉ (8 DERNIÈRES SEMAINES)</div>
+        <div class="stats-week-chart">${bars}</div>
+        ${pairs}`;
+}

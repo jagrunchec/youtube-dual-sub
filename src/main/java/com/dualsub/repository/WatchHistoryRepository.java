@@ -14,4 +14,7 @@ public interface WatchHistoryRepository extends JpaRepository<WatchHistory, Long
 
     /** Returns the most recent entry for a given video (used for upsert). */
     java.util.Optional<WatchHistory> findTopByVideoIdOrderByWatchedAtDesc(String videoId);
+
+    /** Returns all watch events for a given user, newest first. */
+    List<WatchHistory> findByUser_IdOrderByWatchedAtDesc(Long userId);
 }
