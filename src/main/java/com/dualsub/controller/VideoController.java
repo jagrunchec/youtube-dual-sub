@@ -3,8 +3,10 @@ package com.dualsub.controller;
 import com.dualsub.model.ProcessRequest;
 import com.dualsub.model.ProcessResponse;
 import com.dualsub.model.SubtitleEntry;
+import com.dualsub.model.User;
 import com.dualsub.service.PersistenceService;
 import com.dualsub.service.TranslationService;
+import com.dualsub.service.UserService;
 import com.dualsub.service.YouTubeTranscriptService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.http.MediaType;
@@ -12,6 +14,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
+import java.security.Principal;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -28,15 +31,18 @@ public class VideoController {
     private final YouTubeTranscriptService youTubeService;
     private final TranslationService translationService;
     private final PersistenceService persistenceService;
+    private final UserService        userService;
     private final ExecutorService executor = Executors.newCachedThreadPool();
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     public VideoController(YouTubeTranscriptService youTubeService,
                            TranslationService translationService,
-                           PersistenceService persistenceService) {
+                           PersistenceService persistenceService,
+                           UserService userService) {
         this.youTubeService     = youTubeService;
         this.translationService = translationService;
         this.persistenceService = persistenceService;
+        this.userService        = userService;
     }
 
     @GetMapping("/languages")
@@ -134,12 +140,32 @@ public class VideoController {
     public SseEmitter processStream(
             @RequestParam String videoUrl,
             @RequestParam String lang1,
-            @RequestParam String lang2) {
+            @RequestParam String lang2,
+            Principal principal) {
 
         SseEmitter emitter = new SseEmitter(300_000L); // 5-minute timeout
 
+        // Resolve current user before entering the async thread (SecurityContext is thread-local)
+        final User currentUser = (principal != null)
+            ? userService.findByEmail(principal.getName()).orElse(null)
+            : null;
+
         executor.submit(() -> {
             try {
+                // ── Weekly quota check (LIMITED users only) ───────────────────
+                if (currentUser != null) {
+                    try {
+                        userService.checkAndIncrementWeeklyView(currentUser.getId());
+                    } catch (UserService.WeeklyLimitExceededException e) {
+                        emitter.send(SseEmitter.event().name("apierror").data(
+                            "{\"error\":\"Limite hebdomadaire atteinte ("
+                            + e.getLimit() + " vidéos). Quota réinitialisé le "
+                            + e.getNextReset() + ".\",\"limitReached\":true}"));
+                        emitter.complete();
+                        return;
+                    }
+                }
+
                 Consumer<String> progress = json -> {
                     try { emitter.send(SseEmitter.event().name("progress").data(json)); }
                     catch (Exception ignored) { /* client disconnected */ }
@@ -247,8 +273,9 @@ public class VideoController {
 
                 // ── Record watch history (best-effort, non-blocking for SSE) ──
                 final String effectiveLang1 = lang1Auto ? "auto" : lang1;
+                final Long userId = (currentUser != null) ? currentUser.getId() : null;
                 executor.submit(() ->
-                    persistenceService.recordWatch(videoId, effectiveLang1, lang2));
+                    persistenceService.recordWatch(videoId, effectiveLang1, lang2, userId));
 
                 // ── Send complete event ───────────────────────────────────────
                 ProcessResponse resp = new ProcessResponse();

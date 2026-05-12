@@ -1,3 +1,594 @@
+/* ══════════════════════════════════════════════════════════════
+   AUTH & USER SYSTEM
+   ══════════════════════════════════════════════════════════════ */
+
+let currentUser = null;   // populated after successful login / checkAuth
+
+/* ── Check auth on load ─────────────────────────────────────── */
+async function checkAuth() {
+    try {
+        const resp = await fetch('/api/auth/me');
+        if (resp.ok) {
+            currentUser = await resp.json();
+            showApp();
+        } else {
+            showAuthOverlay();
+        }
+    } catch (e) {
+        showAuthOverlay();
+    }
+}
+
+function showApp() {
+    document.getElementById('authOverlay').classList.add('hidden');
+    document.getElementById('userBar').classList.remove('hidden');
+    document.getElementById('mainApp').classList.remove('hidden');
+    renderUserBar();
+}
+
+function showAuthOverlay() {
+    document.getElementById('authOverlay').classList.remove('hidden');
+    document.getElementById('userBar').classList.add('hidden');
+    document.getElementById('mainApp').classList.add('hidden');
+}
+
+/* ── User bar ───────────────────────────────────────────────── */
+function renderUserBar() {
+    if (!currentUser) return;
+    const initials = ((currentUser.firstName[0] || '') + (currentUser.lastName[0] || '')).toUpperCase() || '?';
+    document.getElementById('userAvatar').textContent     = initials;
+    document.getElementById('userName').textContent       = currentUser.firstName + ' ' + currentUser.lastName;
+    document.getElementById('userRoleBadge').textContent  = currentUser.role;
+    document.getElementById('userRoleBadge').className    = 'user-role-badge role-' + currentUser.role.toLowerCase();
+
+    // Admin button
+    const btnAdmin = document.getElementById('btnAdminPanel');
+    btnAdmin.style.display = currentUser.role === 'ADMIN' ? '' : 'none';
+
+    // Quota display for LIMITED users
+    const quotaEl = document.getElementById('userQuota');
+    if (currentUser.weeklyVideoLimit > 0) {
+        const left  = currentUser.weeklyViewsLeft;
+        const total = currentUser.weeklyVideoLimit;
+        quotaEl.textContent = left + '/' + total + ' vidéos restantes';
+        quotaEl.classList.remove('hidden');
+        quotaEl.className = 'user-quota ' + (left === 0 ? 'quota-empty' : left <= 2 ? 'quota-low' : '');
+    } else {
+        quotaEl.classList.add('hidden');
+    }
+}
+
+/* ── Auth tabs ──────────────────────────────────────────────── */
+function showAuthTab(tab) {
+    ['login', 'register', 'recover'].forEach(t => {
+        document.getElementById(t + 'Form').classList.add('hidden');
+        document.getElementById('tab' + t.charAt(0).toUpperCase() + t.slice(1)).classList.remove('active');
+    });
+    document.getElementById(tab + 'Form').classList.remove('hidden');
+    document.getElementById('tab' + tab.charAt(0).toUpperCase() + tab.slice(1)).classList.add('active');
+}
+
+/* ── Login ──────────────────────────────────────────────────── */
+async function doLogin(e) {
+    e.preventDefault();
+    const errEl = document.getElementById('loginError');
+    errEl.classList.add('hidden');
+    const email    = document.getElementById('loginEmail').value.trim();
+    const password = document.getElementById('loginPassword').value;
+    try {
+        const resp = await fetch('/api/auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, password }),
+        });
+        const data = await resp.json();
+        if (!resp.ok) { errEl.textContent = data.error; errEl.classList.remove('hidden'); return; }
+        currentUser = data;
+        showApp();
+        await loadPreferences();
+        loadHistory();
+    } catch (err) {
+        errEl.textContent = 'Impossible de joindre le serveur.';
+        errEl.classList.remove('hidden');
+    }
+}
+
+/* ── Register ───────────────────────────────────────────────── */
+async function doRegister(e) {
+    e.preventDefault();
+    const errEl = document.getElementById('registerError');
+    errEl.classList.add('hidden');
+    const password  = document.getElementById('regPassword').value;
+    const password2 = document.getElementById('regPassword2').value;
+    if (password !== password2) {
+        errEl.textContent = 'Les mots de passe ne correspondent pas.';
+        errEl.classList.remove('hidden');
+        return;
+    }
+    const q1 = document.getElementById('regQ1').value;
+    const q2 = document.getElementById('regQ2').value;
+    if (q1 === q2) {
+        errEl.textContent = 'Choisissez deux questions différentes.';
+        errEl.classList.remove('hidden');
+        return;
+    }
+    // Collect optional profile fields
+    const learnChecked = [...document.querySelectorAll('#regLearnLangs input[type=checkbox]:checked')]
+        .map(c => c.value);
+    const birthYear = document.getElementById('regBirthYear').value;
+    const country   = document.getElementById('regCountry').value.trim();
+
+    try {
+        const resp = await fetch('/api/auth/register', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                email:            document.getElementById('regEmail').value.trim(),
+                password,
+                firstName:        document.getElementById('regFirstName').value.trim(),
+                lastName:         document.getElementById('regLastName').value.trim(),
+                nativeLanguage:   document.getElementById('regNative').value,
+                languagesToLearn: JSON.stringify(learnChecked),
+                birthYear:        birthYear ? parseInt(birthYear) : null,
+                country:          country || null,
+                questionKeys:     [q1, q2],
+                answers:          [document.getElementById('regA1').value, document.getElementById('regA2').value],
+            }),
+        });
+        const data = await resp.json();
+        if (!resp.ok) { errEl.textContent = data.error; errEl.classList.remove('hidden'); return; }
+        if (data.pending) {
+            // Email verification required — show confirmation message
+            showRegisterPending(data.message);
+            return;
+        }
+        // Auto-login after registration (mail disabled mode)
+        currentUser = data;
+        showApp();
+        await loadPreferences();
+        loadHistory();
+    } catch (err) {
+        errEl.textContent = 'Impossible de joindre le serveur.';
+        errEl.classList.remove('hidden');
+    }
+}
+
+function populateRegisterProfile() {
+    // Native language select
+    const nativeSel = document.getElementById('regNative');
+    if (nativeSel) {
+        nativeSel.innerHTML = '';
+        Object.entries(LANG_LABELS).forEach(([code, label]) => {
+            const opt = document.createElement('option');
+            opt.value = code;
+            opt.textContent = label;
+            nativeSel.appendChild(opt);
+        });
+    }
+    // Languages to learn checkboxes
+    const learnDiv = document.getElementById('regLearnLangs');
+    if (learnDiv) {
+        learnDiv.innerHTML = '';
+        Object.entries(LANG_LABELS).forEach(([code, label]) => {
+            const lbl = document.createElement('label');
+            lbl.className = 'pf-check';
+            lbl.innerHTML = `<input type="checkbox" value="${code}"> ${label}`;
+            learnDiv.appendChild(lbl);
+        });
+    }
+}
+
+async function loadSecurityQuestions() {
+    try {
+        const resp = await fetch('/api/auth/questions');
+        if (!resp.ok) return;
+        const questions = await resp.json();  // { key: label }
+        ['regQ1', 'regQ2'].forEach(id => {
+            const sel = document.getElementById(id);
+            sel.innerHTML = '';
+            Object.entries(questions).forEach(([key, label]) => {
+                const opt = document.createElement('option');
+                opt.value = key; opt.textContent = label;
+                sel.appendChild(opt);
+            });
+        });
+        // Default second question to a different one
+        const opts = document.getElementById('regQ2').options;
+        if (opts.length > 1) opts[1].selected = true;
+    } catch (e) { /* silent */ }
+}
+
+/* ── Logout ─────────────────────────────────────────────────── */
+async function doLogout() {
+    await fetch('/api/auth/logout', { method: 'POST' });
+    currentUser = null;
+    showAuthOverlay();
+    resetApp();
+}
+
+/* ── Registration pending (email confirmation required) ─────── */
+function showRegisterPending(message) {
+    // Switch to the recover tab and repurpose step2 as a "check your email" panel
+    showAuthTab('recover');
+    document.getElementById('recoverStep1').classList.add('hidden');
+    document.getElementById('recoverStep3').classList.add('hidden');
+    document.getElementById('recoverStep2').classList.remove('hidden');
+    document.getElementById('recoverSentMsg').textContent =
+        message || 'Un email de confirmation a été envoyé. Cliquez sur le lien pour activer votre compte.';
+    // Change the tab label to reflect registration context
+    document.getElementById('tabRecover').textContent = 'CONFIRMATION';
+}
+
+/* ── Password recovery (email link) ─────────────────────────── */
+async function doSendRecoverEmail() {
+    const email  = document.getElementById('recEmail').value.trim();
+    const errEl  = document.getElementById('recoverError1');
+    errEl.classList.add('hidden');
+    if (!email) { errEl.textContent = 'Saisissez votre email.'; errEl.classList.remove('hidden'); return; }
+    try {
+        const resp = await fetch('/api/auth/recover/send', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email }),
+        });
+        const data = await resp.json();
+        if (!resp.ok) { errEl.textContent = data.error; errEl.classList.remove('hidden'); return; }
+        document.getElementById('recoverStep1').classList.add('hidden');
+        document.getElementById('recoverSentMsg').textContent =
+            'Un lien de réinitialisation a été envoyé à ' + email + '. Il est valable 1 heure.';
+        document.getElementById('recoverStep2').classList.remove('hidden');
+    } catch (e) {
+        errEl.textContent = 'Impossible de joindre le serveur.'; errEl.classList.remove('hidden');
+    }
+}
+
+/* ── Reset password via token (from email link) ─────────────── */
+let _resetToken = null;  // populated when ?resetToken=xxx is in the URL
+
+async function doResetPasswordByToken() {
+    const errEl = document.getElementById('recoverError3');
+    errEl.classList.add('hidden');
+    const newPassword  = document.getElementById('recNewPwd').value;
+    const newPassword2 = document.getElementById('recNewPwd2').value;
+    if (newPassword.length < 8) {
+        errEl.textContent = 'Minimum 8 caractères.'; errEl.classList.remove('hidden'); return;
+    }
+    if (newPassword !== newPassword2) {
+        errEl.textContent = 'Les mots de passe ne correspondent pas.'; errEl.classList.remove('hidden'); return;
+    }
+    try {
+        const resp = await fetch('/api/auth/reset-password', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ token: _resetToken, newPassword }),
+        });
+        const data = await resp.json();
+        if (!resp.ok) { errEl.textContent = data.error; errEl.classList.remove('hidden'); return; }
+        errEl.textContent = '✓ Mot de passe modifié ! Vous pouvez vous connecter.';
+        errEl.style.color = '#00ff88';
+        errEl.classList.remove('hidden');
+        setTimeout(() => showAuthTab('login'), 2000);
+    } catch (e) {
+        errEl.textContent = 'Impossible de joindre le serveur.'; errEl.classList.remove('hidden');
+    }
+}
+
+/* ── Profile modal ──────────────────────────────────────────── */
+function showProfileModal() {
+    if (!currentUser) return;
+    const u = currentUser;
+    const LEVELS = ['A1','A2','B1','B2','C1','C2'];
+    const langs = JSON.parse(u.languagesToLearn || '[]');
+    const level = JSON.parse(u.learningLevel    || '{}');
+
+    document.getElementById('profileModalBody').innerHTML = `
+        <div class="profile-section">
+            <h3>// INFORMATIONS PERSONNELLES</h3>
+            <div class="profile-row2">
+                <div class="pf"><label>PRÉNOM</label><input id="pfFirstName" value="${esc(u.firstName)}"></div>
+                <div class="pf"><label>NOM</label><input id="pfLastName" value="${esc(u.lastName)}"></div>
+            </div>
+            <div class="pf"><label>EMAIL</label><input value="${esc(u.email)}" disabled></div>
+            <div class="profile-row2">
+                <div class="pf"><label>ANNÉE DE NAISSANCE</label><input id="pfBirthYear" type="number" value="${u.birthYear || ''}" placeholder="1990"></div>
+                <div class="pf"><label>PAYS</label><input id="pfCountry" value="${esc(u.country)}" placeholder="FR"></div>
+            </div>
+        </div>
+        <div class="profile-section">
+            <h3>// APPRENTISSAGE</h3>
+            <div class="pf"><label>LANGUE MATERNELLE</label>
+                <select id="pfNative">
+                    ${Object.entries(LANG_LABELS).map(([k,v]) => `<option value="${k}" ${u.nativeLanguage===k?'selected':''}>${v}</option>`).join('')}
+                </select>
+            </div>
+            <div class="pf"><label>LANGUES À APPRENDRE</label>
+                <div class="pf-checkboxes">
+                    ${Object.entries(LANG_LABELS).map(([k,v]) => `
+                        <label class="pf-check"><input type="checkbox" value="${k}" ${langs.includes(k)?'checked':''}> ${v}</label>
+                    `).join('')}
+                </div>
+            </div>
+        </div>
+        <div class="profile-section">
+            <h3>// CHANGER LE MOT DE PASSE</h3>
+            <div class="pf"><label>MOT DE PASSE ACTUEL</label>
+                <div class="pwd-wrap">
+                    <input type="password" id="pfOldPwd" placeholder="••••••••">
+                    <button type="button" class="pwd-toggle" onclick="togglePwd('pfOldPwd',this)" title="Afficher/masquer">👁</button>
+                </div>
+            </div>
+            <div class="pf"><label>NOUVEAU MOT DE PASSE</label>
+                <div class="pwd-wrap">
+                    <input type="password" id="pfNewPwd" placeholder="••••••••">
+                    <button type="button" class="pwd-toggle" onclick="togglePwd('pfNewPwd',this)" title="Afficher/masquer">👁</button>
+                </div>
+            </div>
+            <div class="auth-error hidden" id="pfPwdError"></div>
+            <button class="btn-fire auth-submit" onclick="doChangePwd()"><span class="fire-glyph">🔑</span> CHANGER</button>
+        </div>
+        <div class="profile-section">
+            <h3>// SUPPORT</h3>
+            <div class="pf"><label>SUJET</label><input id="pfSupportSubject" placeholder="Problème ou suggestion…"></div>
+            <div class="pf"><label>MESSAGE</label><textarea id="pfSupportBody" rows="4" placeholder="Décrivez votre problème…"></textarea></div>
+            <div class="auth-error hidden" id="pfSupportMsg"></div>
+            <button class="btn-fire auth-submit" onclick="doSendSupport()"><span class="fire-glyph">✉</span> ENVOYER</button>
+        </div>
+        <div class="profile-actions">
+            <button class="btn-fire" onclick="saveProfile()"><span class="fire-glyph">💾</span> ENREGISTRER LE PROFIL</button>
+            <div class="auth-error hidden" id="pfSaveMsg"></div>
+        </div>`;
+
+    document.getElementById('profileModal').classList.remove('hidden');
+}
+
+function closeProfileModal() {
+    document.getElementById('profileModal').classList.add('hidden');
+}
+
+async function saveProfile() {
+    const msgEl = document.getElementById('pfSaveMsg');
+    msgEl.classList.add('hidden');
+    const learnChecks = [...document.querySelectorAll('#profileModalBody .pf-checkboxes input[type=checkbox]')];
+    const langChecks  = learnChecks.filter(c => Object.keys(LANG_LABELS).includes(c.value) && c.checked).map(c => c.value);
+
+    try {
+        const resp = await fetch('/api/users/me', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                firstName:        document.getElementById('pfFirstName').value,
+                lastName:         document.getElementById('pfLastName').value,
+                nativeLanguage:   document.getElementById('pfNative').value,
+                languagesToLearn: JSON.stringify(langChecks),
+                birthYear:        document.getElementById('pfBirthYear').value || null,
+                country:          document.getElementById('pfCountry').value,
+            }),
+        });
+        const data = await resp.json();
+        if (!resp.ok) { msgEl.textContent = data.error; msgEl.classList.remove('hidden'); return; }
+        currentUser = data;
+        renderUserBar();
+        msgEl.textContent = '✓ Profil enregistré';
+        msgEl.style.color = '#00ff88';
+        msgEl.classList.remove('hidden');
+    } catch (e) {
+        msgEl.textContent = 'Erreur réseau'; msgEl.classList.remove('hidden');
+    }
+}
+
+async function doChangePwd() {
+    const errEl = document.getElementById('pfPwdError');
+    errEl.classList.add('hidden');
+    const currentPassword = document.getElementById('pfOldPwd').value;
+    const newPassword     = document.getElementById('pfNewPwd').value;
+    if (newPassword.length < 8) {
+        errEl.textContent = 'Minimum 8 caractères.'; errEl.classList.remove('hidden'); return;
+    }
+    const resp = await fetch('/api/users/me/password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ currentPassword, newPassword }),
+    });
+    const data = await resp.json();
+    if (!resp.ok) { errEl.textContent = data.error; errEl.classList.remove('hidden'); return; }
+    errEl.textContent = '✓ Mot de passe modifié';
+    errEl.style.color = '#00ff88';
+    errEl.classList.remove('hidden');
+    document.getElementById('pfOldPwd').value = '';
+    document.getElementById('pfNewPwd').value = '';
+}
+
+function togglePwd(inputId, btn) {
+    const input = document.getElementById(inputId);
+    if (input.type === 'password') {
+        input.type = 'text';
+        btn.textContent = '🙈';
+    } else {
+        input.type = 'password';
+        btn.textContent = '👁';
+    }
+}
+
+async function doSendSupport() {
+    const msgEl = document.getElementById('pfSupportMsg');
+    msgEl.classList.add('hidden');
+    const subject = document.getElementById('pfSupportSubject').value.trim();
+    const body    = document.getElementById('pfSupportBody').value.trim();
+    if (!subject || !body) {
+        msgEl.textContent = 'Sujet et message requis.'; msgEl.classList.remove('hidden'); return;
+    }
+    const resp = await fetch('/api/support/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ subject, body }),
+    });
+    const data = await resp.json();
+    if (!resp.ok) { msgEl.textContent = data.error; msgEl.classList.remove('hidden'); return; }
+    msgEl.textContent = '✓ Message envoyé à l\'équipe support';
+    msgEl.style.color = '#00ff88';
+    msgEl.classList.remove('hidden');
+    document.getElementById('pfSupportSubject').value = '';
+    document.getElementById('pfSupportBody').value = '';
+}
+
+/* ── Admin panel ────────────────────────────────────────────── */
+function showAdminPanel() {
+    document.getElementById('adminPanel').classList.remove('hidden');
+    showAdminTab('users');
+}
+function hideAdminPanel() {
+    document.getElementById('adminPanel').classList.add('hidden');
+}
+
+async function showAdminTab(tab) {
+    // Update tab styles
+    document.querySelectorAll('.admin-tab').forEach(t => t.classList.remove('active'));
+    document.getElementById('adminTab' + tab.charAt(0).toUpperCase() + tab.slice(1)).classList.add('active');
+
+    const content = document.getElementById('adminContent');
+    content.innerHTML = '<div class="admin-loading">Chargement…</div>';
+
+    if (tab === 'users')   await renderAdminUsers(content);
+    if (tab === 'support') await renderAdminSupport(content);
+    if (tab === 'stats')   await renderAdminStats(content);
+}
+
+async function renderAdminUsers(container) {
+    const resp = await fetch('/api/admin/users');
+    const users = await resp.json();
+    const ROLES = ['LIMITED','NORMAL','SUPER','ADMIN'];
+    container.innerHTML = `
+        <div class="admin-table-wrap">
+        <table class="admin-table">
+        <thead><tr>
+            <th>NOM</th><th>EMAIL</th><th>RÔLE</th><th>QUOTA</th>
+            <th>VUES SEMAINE</th><th>STATUT</th><th>DERNIÈRE CONNEXION</th><th>ACTIONS</th>
+        </tr></thead>
+        <tbody>
+        ${users.map(u => `
+            <tr class="${!u.active ? 'row-inactive' : ''} ${u.locked ? 'row-locked' : ''}">
+                <td>${esc(u.firstName)} ${esc(u.lastName)}</td>
+                <td class="td-email">${esc(u.email)}</td>
+                <td>
+                    <select class="admin-select role-select" data-uid="${u.id}" onchange="adminSetRole(${u.id},this.value)">
+                        ${ROLES.map(r => `<option ${u.role===r?'selected':''}>${r}</option>`).join('')}
+                    </select>
+                </td>
+                <td>
+                    ${u.weeklyVideoLimit > 0
+                        ? `<input class="admin-num-input" type="number" min="1" value="${u.weeklyVideoLimit}"
+                              onchange="adminSetLimit(${u.id},this.value)">`
+                        : '<span class="td-muted">∞</span>'}
+                </td>
+                <td>${u.weeklyViewCount}</td>
+                <td>
+                    <span class="status-badge ${u.active?'status-active':'status-inactive'}">${u.active?'ACTIF':'INACTIF'}</span>
+                    ${u.locked ? `<span class="status-badge status-locked" title="Bloqué jusqu'au ${u.lockedUntil.substring(0,16).replace('T',' ')}">🔐 BLOQUÉ</span>` : ''}
+                    ${!u.locked && u.failedAttempts > 0 ? `<span class="td-muted" title="${u.failedAttempts} tentative(s) échouée(s)">${u.failedAttempts}×⚠</span>` : ''}
+                </td>
+                <td class="td-date">${u.lastLoginAt ? u.lastLoginAt.substring(0,16).replace('T',' ') : '—'}</td>
+                <td class="td-actions">
+                    ${u.locked ? `<button class="admin-btn admin-btn-unlock" onclick="adminUnlock(${u.id})">🔓 Débloquer</button>` : ''}
+                    <button class="admin-btn" onclick="adminToggleActive(${u.id},${!u.active})">
+                        ${u.active ? '🚫 Désactiver' : '✅ Activer'}
+                    </button>
+                </td>
+            </tr>`).join('')}
+        </tbody></table></div>`;
+}
+
+async function adminSetRole(userId, role) {
+    await fetch(`/api/admin/users/${userId}/role`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ role }),
+    });
+    showAdminTab('users');
+}
+
+async function adminSetLimit(userId, limit) {
+    await fetch(`/api/admin/users/${userId}/limit`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ limit: parseInt(limit) }),
+    });
+}
+
+async function adminToggleActive(userId, active) {
+    await fetch(`/api/admin/users/${userId}/active`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ active }),
+    });
+    showAdminTab('users');
+}
+
+async function adminUnlock(userId) {
+    await fetch(`/api/admin/users/${userId}/unlock`, { method: 'POST' });
+    showAdminTab('users');
+}
+
+async function renderAdminSupport(container) {
+    const resp     = await fetch('/api/admin/support');
+    const messages = await resp.json();
+    const STATUS_LABELS = { OPEN:'OUVERT', IN_PROGRESS:'EN COURS', CLOSED:'FERMÉ' };
+    if (messages.length === 0) {
+        container.innerHTML = '<p class="admin-empty">Aucun ticket de support.</p>'; return;
+    }
+    container.innerHTML = messages.map(m => `
+        <div class="support-card ${m.status.toLowerCase()}">
+            <div class="support-card-header">
+                <span class="support-badge support-${m.status.toLowerCase()}">${STATUS_LABELS[m.status]||m.status}</span>
+                <span class="support-user">${esc(m.userName)} &lt;${esc(m.userEmail)}&gt;</span>
+                <span class="support-date">${m.createdAt.substring(0,16).replace('T',' ')}</span>
+            </div>
+            <div class="support-subject">${esc(m.subject)}</div>
+            <div class="support-body">${esc(m.body)}</div>
+            ${m.adminResponse ? `<div class="support-response"><strong>Réponse :</strong> ${esc(m.adminResponse)}</div>` : ''}
+            ${m.status !== 'CLOSED' ? `
+            <div class="support-reply">
+                <textarea id="replyText${m.id}" rows="2" placeholder="Votre réponse…"></textarea>
+                <div class="support-reply-btns">
+                    <button class="admin-btn" onclick="adminRespond(${m.id},'IN_PROGRESS')">Marquer En cours</button>
+                    <button class="admin-btn admin-btn-close" onclick="adminRespond(${m.id},'CLOSED')">Répondre & Fermer</button>
+                </div>
+            </div>` : ''}
+        </div>`).join('');
+}
+
+async function adminRespond(msgId, status) {
+    const text = document.getElementById('replyText' + msgId).value.trim();
+    await fetch(`/api/admin/support/${msgId}/respond`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ response: text, status }),
+    });
+    showAdminTab('support');
+}
+
+async function renderAdminStats(container) {
+    const resp  = await fetch('/api/admin/stats');
+    const stats = await resp.json();
+    container.innerHTML = `
+        <div class="stats-grid">
+            <div class="stat-card"><div class="stat-val">${stats.totalUsers}</div><div class="stat-lbl">Utilisateurs total</div></div>
+            <div class="stat-card"><div class="stat-val">${stats.activeUsers}</div><div class="stat-lbl">Comptes actifs</div></div>
+            <div class="stat-card"><div class="stat-val">${stats.limitedUsers}</div><div class="stat-lbl">Profil LIMITED</div></div>
+            <div class="stat-card"><div class="stat-val">${stats.normalUsers}</div><div class="stat-lbl">Profil NORMAL</div></div>
+            <div class="stat-card"><div class="stat-val">${stats.superUsers}</div><div class="stat-lbl">Profil SUPER</div></div>
+            <div class="stat-card"><div class="stat-val">${stats.adminUsers}</div><div class="stat-lbl">Administrateurs</div></div>
+            <div class="stat-card ${stats.openTickets>0?'stat-warn':''}"><div class="stat-val">${stats.openTickets}</div><div class="stat-lbl">Tickets ouverts</div></div>
+        </div>`;
+}
+
+function esc(str) {
+    return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+/* ══════════════════════════════════════════════════════════════
+   EXISTING APP CODE
+   ══════════════════════════════════════════════════════════════ */
+
 /* ─── State ─────────────────────────────────────────────────── */
 let selectedLang1   = 'fr';
 let selectedLang2   = 'de';
@@ -9,6 +600,9 @@ let immersionMode   = false;
 let progressTimer   = null;   // setInterval handle for the per-step elapsed timer
 let stepElapsed     = 0;      // seconds elapsed since the current step started
 let historyExpanded = true;   // whether the history panel is expanded
+let currentSpeed       = 1;      // current playback rate
+let transcriptVisible  = false;  // transcript panel open?
+let lastTranscriptIdx  = -1;     // last highlighted transcript row
 
 const LANG_LABELS = {
     fr: 'Français', en: 'English', es: 'Español',
@@ -16,6 +610,15 @@ const LANG_LABELS = {
 };
 
 /* ─── Internationalisation ───────────────────────────────────── */
+const BOOKMARKLET_HINTS = {
+    fr: 'Glisser ce lien dans la barre de favoris. Cliquez-le ensuite sur n\'importe quelle page YouTube pour ouvrir DualSub automatiquement.',
+    en: 'Drag this link to your bookmarks bar. Click it on any YouTube page to open DualSub automatically.',
+    es: 'Arrastra este enlace a la barra de favoritos. Haz clic en él en cualquier página de YouTube para abrir DualSub automáticamente.',
+    it: 'Trascina questo link nella barra dei preferiti. Cliccalo su qualsiasi pagina YouTube per aprire DualSub automaticamente.',
+    de: 'Ziehe diesen Link in die Lesezeichenleiste. Klicke ihn auf einer beliebigen YouTube-Seite, um DualSub automatisch zu öffnen.',
+    pl: 'Przeciągnij ten link na pasek zakładek. Kliknij go na dowolnej stronie YouTube, aby automatycznie otworzyć DualSub.',
+};
+
 const I18N = {
     fr: {
         title:          'DualSub — Double Traduction YouTube',
@@ -198,6 +801,14 @@ function applyI18n() {
     document.getElementById('immersionLabel').textContent = t.immLabel;
     document.getElementById('immersionHint').textContent  = t.immHint;
     document.getElementById('labelHistory').textContent   = t.labelHistory;
+
+    // Bookmarklet hint text (localised)
+    const hintEl = document.getElementById('bkmkHint');
+    if (hintEl) {
+        const msg = BOOKMARKLET_HINTS[uiLang] || BOOKMARKLET_HINTS.en;
+        hintEl.dataset.msg  = msg;
+        hintEl.textContent  = msg;
+    }
 }
 
 /* ─── Immersion mode ────────────────────────────────────────── */
@@ -208,14 +819,104 @@ function toggleImmersion(cb) {
     savePreferences();
 }
 
+/* ─── Favicon (canvas PNG — picked up by Chrome when bookmarking) ── */
+function setCanvasFavicon() {
+    try {
+        const SIZE = 64;
+        const c   = document.createElement('canvas');
+        c.width   = c.height = SIZE;
+        const ctx = c.getContext('2d');
+
+        // Rounded-square clip
+        ctx.beginPath();
+        ctx.roundRect(0, 0, SIZE, SIZE, SIZE * 0.16);
+        ctx.clip();
+
+        // Green left half (piste 1)
+        ctx.fillStyle = '#00cc6e';
+        ctx.fillRect(0, 0, SIZE / 2, SIZE);
+
+        // Orange right half (piste 2)
+        ctx.fillStyle = '#ff7b00';
+        ctx.fillRect(SIZE / 2, 0, SIZE / 2, SIZE);
+
+        // White play triangle centred on the split
+        ctx.fillStyle = 'white';
+        ctx.beginPath();
+        ctx.moveTo(SIZE * 0.22, SIZE * 0.17);   // top-left
+        ctx.lineTo(SIZE * 0.22, SIZE * 0.83);   // bottom-left
+        ctx.lineTo(SIZE * 0.82, SIZE * 0.50);   // right apex
+        ctx.closePath();
+        ctx.fill();
+
+        // Replace the SVG favicon with the canvas PNG
+        const link = document.querySelector("link[rel='icon']")
+                  || document.head.appendChild(
+                       Object.assign(document.createElement('link'), { rel: 'icon' }));
+        link.type = 'image/png';
+        link.href = c.toDataURL('image/png');
+    } catch (e) { /* keep SVG fallback */ }
+}
+
 /* ─── Boot ──────────────────────────────────────────────────── */
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+    setCanvasFavicon();
     applyI18n();
+
+    // Load security questions and populate profile fields for the registration form
+    loadSecurityQuestions();
+    populateRegisterProfile();
+
     document.getElementById('videoUrl').addEventListener('keydown', e => {
         if (e.key === 'Enter') processVideo();
     });
-    loadPreferences();
-    loadHistory();
+
+    // Handle special URL params before auth check
+    const params      = new URLSearchParams(window.location.search);
+    const bookmarkUrl = params.get('v');
+    const resetToken  = params.get('resetToken');
+    const verified    = params.get('verified');
+    const verifyError = params.get('verifyError');
+
+    // Clean URL immediately
+    history.replaceState(null, '', window.location.pathname);
+
+    if (bookmarkUrl) {
+        document.getElementById('videoUrl').value = bookmarkUrl;
+    }
+
+    // Auth check — shows app or login form
+    await checkAuth();
+
+    // After auth check, handle special cases (only if not logged in)
+    if (!currentUser) {
+        if (resetToken) {
+            // Show password reset form
+            _resetToken = resetToken;
+            showAuthTab('recover');
+            document.getElementById('recoverStep1').classList.add('hidden');
+            document.getElementById('recoverStep2').classList.add('hidden');
+            document.getElementById('recoverStep3').classList.remove('hidden');
+        } else if (verified) {
+            // Show success message on login tab
+            showAuthTab('login');
+            const errEl = document.getElementById('loginError');
+            errEl.textContent = '✓ Compte activé avec succès ! Vous pouvez maintenant vous connecter.';
+            errEl.style.color = '#00ff88';
+            errEl.classList.remove('hidden');
+        } else if (verifyError) {
+            showAuthTab('login');
+            const errEl = document.getElementById('loginError');
+            errEl.textContent = decodeURIComponent(verifyError);
+            errEl.classList.remove('hidden');
+        }
+    }
+
+    if (currentUser) {
+        await loadPreferences();
+        loadHistory();
+        if (bookmarkUrl) processVideo();
+    }
 });
 
 /* ─── Language card selection ───────────────────────────────── */
@@ -542,10 +1243,14 @@ function processVideo() {
     sse.addEventListener('apierror', e => {
         sseHandled = true;
         sse.close();
-        const { error } = JSON.parse(e.data);
-        showError(error || t.errServer);
+        const data = JSON.parse(e.data);
+        showError(data.error || t.errServer);
         setLoading(false);
         hideProgress();
+        // Refresh user bar so the quota counter updates
+        if (data.limitReached) {
+            fetch('/api/auth/me').then(r => r.json()).then(u => { currentUser = u; renderUserBar(); });
+        }
     });
 
     sse.onerror = () => {
@@ -580,6 +1285,16 @@ function showPlayer(videoId) {
     subtitles1.sort((a, b) => a.startMs - b.startMs);
     subtitles2.sort((a, b) => a.startMs - b.startMs);
 
+    // Update export labels and render transcript
+    const l1 = document.getElementById('lang1Badge').textContent;
+    const l2 = document.getElementById('lang2Badge').textContent;
+    document.getElementById('exportLabel1').textContent = l1;
+    document.getElementById('exportLabel2').textContent = l2;
+    document.getElementById('trHead1').textContent = l1;
+    document.getElementById('trHead2').textContent = l2;
+    renderTranscript();
+    lastTranscriptIdx = -1;
+
     startSync();
 
     if (player) {
@@ -607,6 +1322,10 @@ function onPlayerStateChange(ev) {
     } else if (!syncInterval) {
         startSync();
     }
+    // Re-apply speed whenever playback (re)starts — YT resets rate on new video
+    if (ev.data === YT.PlayerState.PLAYING && currentSpeed !== 1) {
+        player.setPlaybackRate(currentSpeed);
+    }
 }
 
 function startSync() {
@@ -624,6 +1343,7 @@ function syncSubtitles() {
     document.getElementById('subtitleText1').textContent = find(subtitles1, nowMs);
     document.getElementById('subtitleText2').textContent = find(subtitles2, nowMs);
     document.getElementById('hudTime').textContent = formatMs(nowMs);
+    syncTranscriptScroll(nowMs);
 }
 
 function find(list, nowMs) {
@@ -648,11 +1368,134 @@ function formatMs(ms) {
         : `${m}:${String(s % 60).padStart(2,'0')}`;
 }
 
+/* ─── Playback speed ────────────────────────────────────────── */
+function setSpeed(rate) {
+    currentSpeed = rate;
+    if (player && typeof player.setPlaybackRate === 'function') {
+        player.setPlaybackRate(rate);
+    }
+    document.querySelectorAll('.speed-btn').forEach(b => {
+        const active = parseFloat(b.dataset.rate) === rate;
+        b.classList.toggle('speed-active', active);
+    });
+}
+
+/* ─── Transcript panel ──────────────────────────────────────── */
+function toggleTranscript() {
+    transcriptVisible = !transcriptVisible;
+    document.getElementById('transcriptPanel').classList.toggle('hidden', !transcriptVisible);
+    document.getElementById('btnTranscript').classList.toggle('tb-active', transcriptVisible);
+}
+
+function renderTranscript() {
+    const inner = document.getElementById('transcriptInner');
+    inner.innerHTML = '';
+    const len = Math.max(subtitles1.length, subtitles2.length);
+    if (len === 0) return;
+    const frag = document.createDocumentFragment();
+    for (let i = 0; i < len; i++) {
+        const s1 = subtitles1[i];
+        const s2 = subtitles2[i];
+        const startMs = s1 ? s1.startMs : s2.startMs;
+        const row = document.createElement('div');
+        row.className = 'tr-row';
+        row.dataset.index   = i;
+        row.dataset.startMs = startMs;
+        row.innerHTML =
+            `<span class="tr-time">${formatMs(startMs)}</span>` +
+            `<span class="tr-text tr-text1">${esc(s1 ? s1.text : '')}</span>` +
+            `<span class="tr-sep"></span>` +
+            `<span class="tr-text tr-text2">${esc(s2 ? s2.text : '')}</span>`;
+        row.addEventListener('click', () => {
+            if (player && typeof player.seekTo === 'function') {
+                player.seekTo(startMs / 1000, true);
+            }
+        });
+        frag.appendChild(row);
+    }
+    inner.appendChild(frag);
+}
+
+function syncTranscriptScroll(nowMs) {
+    if (!transcriptVisible) return;
+    const rows = document.querySelectorAll('#transcriptInner .tr-row');
+    if (!rows.length) return;
+    // Binary search for the last row whose startMs ≤ nowMs
+    let lo = 0, hi = rows.length - 1, best = 0;
+    while (lo <= hi) {
+        const mid = (lo + hi) >> 1;
+        if (parseFloat(rows[mid].dataset.startMs) <= nowMs) { best = mid; lo = mid + 1; }
+        else hi = mid - 1;
+    }
+    if (best === lastTranscriptIdx) return;
+    rows[lastTranscriptIdx]?.classList.remove('tr-active');
+    rows[best].classList.add('tr-active');
+    rows[best].scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    lastTranscriptIdx = best;
+}
+
+/* ─── Export ────────────────────────────────────────────────── */
+function exportSRT(track) {
+    const subs  = track === 1 ? subtitles1 : subtitles2;
+    const label = track === 1
+        ? document.getElementById('lang1Badge').textContent
+        : document.getElementById('lang2Badge').textContent;
+    if (!subs.length) return;
+    let out = '';
+    subs.forEach((s, i) => {
+        out += `${i + 1}\r\n${srtTime(s.startMs)} --> ${srtTime(s.startMs + s.durationMs)}\r\n${s.text}\r\n\r\n`;
+    });
+    downloadFile(out, `DualSub_${label}.srt`, 'text/plain');
+}
+
+function exportTXT() {
+    if (!subtitles1.length && !subtitles2.length) return;
+    const l1 = document.getElementById('lang1Badge').textContent;
+    const l2 = document.getElementById('lang2Badge').textContent;
+    const len = Math.max(subtitles1.length, subtitles2.length);
+    let out = '';
+    for (let i = 0; i < len; i++) {
+        const s1 = subtitles1[i];
+        const s2 = subtitles2[i];
+        out += `[${formatMs(s1 ? s1.startMs : s2.startMs)}]\r\n`;
+        if (s1) out += `${l1}: ${s1.text}\r\n`;
+        if (s2) out += `${l2}: ${s2.text}\r\n`;
+        out += '\r\n';
+    }
+    downloadFile(out, `DualSub_${l1}_${l2}.txt`, 'text/plain');
+}
+
+function srtTime(ms) {
+    const h  = Math.floor(ms / 3_600_000);
+    const m  = Math.floor(ms % 3_600_000 / 60_000);
+    const s  = Math.floor(ms % 60_000 / 1_000);
+    const cs = ms % 1_000;
+    return `${pad2(h)}:${pad2(m)}:${pad2(s)},${String(cs).padStart(3,'0')}`;
+}
+function pad2(n) { return String(n).padStart(2, '0'); }
+
+function downloadFile(content, filename, mime) {
+    const blob = new Blob(['﻿' + content], { type: mime + ';charset=utf-8' });
+    const url  = URL.createObjectURL(blob);
+    const a    = Object.assign(document.createElement('a'), { href: url, download: filename });
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+}
+
 /* ─── Reset ─────────────────────────────────────────────────── */
 function resetApp() {
     stopSync();
     subtitles1 = [];
     subtitles2 = [];
+    // Reset speed UI (keep currentSpeed for next video)
+    // Reset transcript
+    transcriptVisible = false;
+    lastTranscriptIdx = -1;
+    document.getElementById('transcriptPanel').classList.add('hidden');
+    document.getElementById('btnTranscript').classList.remove('tb-active');
+    document.getElementById('transcriptInner').innerHTML = '';
     document.getElementById('subtitleText1').textContent = '';
     document.getElementById('subtitleText2').textContent = '';
     document.getElementById('hudStatus').textContent = '';

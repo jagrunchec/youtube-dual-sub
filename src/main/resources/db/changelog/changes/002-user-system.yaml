@@ -1,0 +1,188 @@
+databaseChangeLog:
+
+  # ── users ────────────────────────────────────────────────────────────────────
+  - changeSet:
+      id: 005-users
+      author: dualsub
+      changes:
+        - createTable:
+            tableName: users
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: email
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: false
+                    unique: true
+              - column:
+                  name: password_hash
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: first_name
+                  type: VARCHAR(100)
+              - column:
+                  name: last_name
+                  type: VARCHAR(100)
+              - column:
+                  name: role
+                  type: VARCHAR(20)
+                  defaultValue: NORMAL
+                  constraints:
+                    nullable: false
+              - column:
+                  name: native_language
+                  type: VARCHAR(10)
+              - column:
+                  name: languages_to_learn
+                  type: TEXT
+              # NULL = unlimited; set for LIMITED role
+              - column:
+                  name: weekly_video_limit
+                  type: INT
+              - column:
+                  name: weekly_view_count
+                  type: INT
+                  defaultValueNumeric: 0
+              - column:
+                  name: weekly_reset_date
+                  type: DATE
+              - column:
+                  name: birth_year
+                  type: INT
+              - column:
+                  name: country
+                  type: VARCHAR(10)
+              - column:
+                  name: learning_goals
+                  type: TEXT
+              - column:
+                  name: learning_level
+                  type: TEXT
+              - column:
+                  name: study_goal_minutes_week
+                  type: INT
+              - column:
+                  name: is_active
+                  type: BOOLEAN
+                  defaultValueBoolean: true
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: TIMESTAMP
+              - column:
+                  name: last_login_at
+                  type: TIMESTAMP
+
+  # ── security_questions ────────────────────────────────────────────────────────
+  - changeSet:
+      id: 006-security-questions
+      author: dualsub
+      changes:
+        - createTable:
+            tableName: security_questions
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: user_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_sq_user
+                    references: users(id)
+              - column:
+                  name: question_key
+                  type: VARCHAR(50)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: answer_hash
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: question_order
+                  type: INT
+                  constraints:
+                    nullable: false
+
+  # ── support_messages ──────────────────────────────────────────────────────────
+  - changeSet:
+      id: 007-support-messages
+      author: dualsub
+      changes:
+        - createTable:
+            tableName: support_messages
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: user_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_sm_user
+                    references: users(id)
+              - column:
+                  name: subject
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: body
+                  type: TEXT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: status
+                  type: VARCHAR(20)
+                  defaultValue: OPEN
+                  constraints:
+                    nullable: false
+              - column:
+                  name: admin_response
+                  type: TEXT
+              - column:
+                  name: created_at
+                  type: TIMESTAMP
+                  constraints:
+                    nullable: false
+              - column:
+                  name: responded_at
+                  type: TIMESTAMP
+
+  # ── watch_history: add user_id FK (nullable — existing rows have no user) ────
+  - changeSet:
+      id: 008-watch-history-user-fk
+      author: dualsub
+      changes:
+        - addColumn:
+            tableName: watch_history
+            columns:
+              - column:
+                  name: user_id
+                  type: BIGINT
+                  constraints:
+                    nullable: true
+                    foreignKeyName: fk_wh_user
+                    references: users(id)

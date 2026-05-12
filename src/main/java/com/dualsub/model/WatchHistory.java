@@ -2,6 +2,7 @@ package com.dualsub.model;
 
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
+import com.dualsub.model.User;
 
 /**
  * One row per video-watch event.
@@ -37,6 +38,11 @@ public class WatchHistory {
     @Column(name = "watched_at", nullable = false)
     private LocalDateTime watchedAt;
 
+    /** The authenticated user who watched — null for anonymous watches (legacy rows). */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id", nullable = true)
+    private User user;
+
     public Long getId()                             { return id; }
     public void setId(Long id)                      { this.id = id; }
 
@@ -57,4 +63,7 @@ public class WatchHistory {
 
     public LocalDateTime getWatchedAt()                   { return watchedAt; }
     public void setWatchedAt(LocalDateTime watchedAt)     { this.watchedAt = watchedAt; }
+
+    public User getUser()                                 { return user; }
+    public void setUser(User user)                        { this.user = user; }
 }

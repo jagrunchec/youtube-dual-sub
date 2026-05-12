@@ -4,20 +4,173 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>DualSub — Double Traduction YouTube</title>
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Exo+2:wght@300;400;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css?v=10">
+    <link rel="stylesheet" href="style.css?v=13">
 </head>
 <body>
 
-<!-- Overlays visuels -->
 <div class="scanlines" aria-hidden="true"></div>
 <div class="vignette"  aria-hidden="true"></div>
 
-<div class="app">
+<!-- ═══ AUTH OVERLAY ═══ -->
+<div class="auth-overlay" id="authOverlay">
+    <div class="auth-box">
+        <div class="auth-logo">
+            <span class="logo-play">▶</span>
+            <span class="logo-dual">DUAL</span><span class="logo-sub">SUB</span>
+        </div>
+        <div class="auth-tabs">
+            <button class="auth-tab active" id="tabLogin"    onclick="showAuthTab('login')">CONNEXION</button>
+            <button class="auth-tab"        id="tabRegister" onclick="showAuthTab('register')">INSCRIPTION</button>
+            <button class="auth-tab"        id="tabRecover"  onclick="showAuthTab('recover')">MOT DE PASSE OUBLIÉ</button>
+        </div>
 
-    <!-- ═══ HEADER ═══ -->
+        <!-- LOGIN -->
+        <form class="auth-form" id="loginForm" onsubmit="doLogin(event)">
+            <div class="auth-field">
+                <label>EMAIL</label>
+                <input type="email" id="loginEmail" autocomplete="email" required placeholder="votre@email.com">
+            </div>
+            <div class="auth-field">
+                <label>MOT DE PASSE</label>
+                <input type="password" id="loginPassword" autocomplete="current-password" required placeholder="••••••••">
+            </div>
+            <div class="auth-error hidden" id="loginError"></div>
+            <button type="submit" class="btn-fire auth-submit"><span class="fire-glyph">⚡</span> SE CONNECTER</button>
+        </form>
+
+        <!-- REGISTER -->
+        <form class="auth-form hidden" id="registerForm" onsubmit="doRegister(event)">
+            <div class="auth-row2">
+                <div class="auth-field"><label>PRÉNOM</label><input type="text" id="regFirstName" required placeholder="Jean"></div>
+                <div class="auth-field"><label>NOM</label><input type="text" id="regLastName" required placeholder="Dupont"></div>
+            </div>
+            <div class="auth-field"><label>EMAIL</label><input type="email" id="regEmail" required placeholder="votre@email.com"></div>
+            <div class="auth-field">
+                <label>MOT DE PASSE <span class="auth-hint">(8 car. min.)</span></label>
+                <div class="pwd-wrap">
+                    <input type="password" id="regPassword" required minlength="8" placeholder="••••••••">
+                    <button type="button" class="pwd-toggle" onclick="togglePwd('regPassword',this)" title="Afficher/masquer">👁</button>
+                </div>
+            </div>
+            <div class="auth-field">
+                <label>CONFIRMER</label>
+                <div class="pwd-wrap">
+                    <input type="password" id="regPassword2" required placeholder="••••••••">
+                    <button type="button" class="pwd-toggle" onclick="togglePwd('regPassword2',this)" title="Afficher/masquer">👁</button>
+                </div>
+            </div>
+
+            <p class="auth-section-label">// PROFIL <span class="auth-hint">(optionnel)</span></p>
+            <div class="auth-field">
+                <label>LANGUE MATERNELLE</label>
+                <select id="regNative"></select>
+            </div>
+            <div class="auth-field">
+                <label>LANGUES À APPRENDRE</label>
+                <div class="pf-checkboxes" id="regLearnLangs"></div>
+            </div>
+            <div class="auth-row2">
+                <div class="auth-field">
+                    <label>ANNÉE DE NAISSANCE <span class="auth-hint">(optionnel)</span></label>
+                    <input type="number" id="regBirthYear" min="1900" max="2099" placeholder="1990">
+                </div>
+                <div class="auth-field">
+                    <label>PAYS <span class="auth-hint">(optionnel)</span></label>
+                    <input type="text" id="regCountry" maxlength="60" placeholder="France">
+                </div>
+            </div>
+
+            <p class="auth-section-label">// QUESTIONS DE SÉCURITÉ</p>
+            <div class="auth-field">
+                <label>QUESTION 1</label>
+                <select id="regQ1"></select>
+                <input type="text" id="regA1" required placeholder="Votre réponse">
+            </div>
+            <div class="auth-field">
+                <label>QUESTION 2</label>
+                <select id="regQ2"></select>
+                <input type="text" id="regA2" required placeholder="Votre réponse">
+            </div>
+            <div class="auth-error hidden" id="registerError"></div>
+            <button type="submit" class="btn-fire auth-submit"><span class="fire-glyph">⚡</span> CRÉER MON COMPTE</button>
+        </form>
+
+        <!-- RECOVER -->
+        <div class="auth-form hidden" id="recoverForm">
+            <!-- Step 1 : saisir l'email -->
+            <div id="recoverStep1">
+                <p class="auth-recover-hint">Saisissez votre adresse email. Vous recevrez un lien pour réinitialiser votre mot de passe.</p>
+                <div class="auth-field">
+                    <label>EMAIL DE VOTRE COMPTE</label>
+                    <input type="email" id="recEmail" placeholder="votre@email.com">
+                </div>
+                <div class="auth-error hidden" id="recoverError1"></div>
+                <button class="btn-fire auth-submit" onclick="doSendRecoverEmail()">
+                    <span class="fire-glyph">✉</span> ENVOYER LE LIEN
+                </button>
+            </div>
+            <!-- Step 2 : email envoyé -->
+            <div id="recoverStep2" class="hidden">
+                <div class="auth-sent-box">
+                    <div class="auth-sent-icon">✉</div>
+                    <p class="auth-sent-title">Email envoyé !</p>
+                    <p class="auth-sent-body" id="recoverSentMsg"></p>
+                    <p class="auth-sent-hint">Vérifiez également vos spams.</p>
+                </div>
+                <button class="btn-fire auth-submit" onclick="showAuthTab('login')">
+                    <span class="fire-glyph">→</span> RETOUR À LA CONNEXION
+                </button>
+            </div>
+            <!-- Step 3 : nouveau mot de passe (affiché si ?resetToken=xxx dans l'URL) -->
+            <div id="recoverStep3" class="hidden">
+                <p class="auth-recover-hint">Choisissez votre nouveau mot de passe.</p>
+                <div class="auth-field">
+                    <label>NOUVEAU MOT DE PASSE <span class="auth-hint">(8 car. min.)</span></label>
+                    <div class="pwd-wrap">
+                        <input type="password" id="recNewPwd" placeholder="••••••••">
+                        <button type="button" class="pwd-toggle" onclick="togglePwd('recNewPwd',this)" title="Afficher/masquer">👁</button>
+                    </div>
+                </div>
+                <div class="auth-field">
+                    <label>CONFIRMER</label>
+                    <div class="pwd-wrap">
+                        <input type="password" id="recNewPwd2" placeholder="••••••••">
+                        <button type="button" class="pwd-toggle" onclick="togglePwd('recNewPwd2',this)" title="Afficher/masquer">👁</button>
+                    </div>
+                </div>
+                <div class="auth-error hidden" id="recoverError3"></div>
+                <button class="btn-fire auth-submit" onclick="doResetPasswordByToken()">
+                    <span class="fire-glyph">⚡</span> ENREGISTRER LE MOT DE PASSE
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ═══ USER BAR ═══ -->
+<div class="user-bar hidden" id="userBar">
+    <div class="user-bar-left">
+        <div class="user-avatar" id="userAvatar">?</div>
+        <div class="user-info">
+            <span class="user-name" id="userName">…</span>
+            <span class="user-role-badge" id="userRoleBadge">NORMAL</span>
+        </div>
+        <div class="user-quota hidden" id="userQuota"></div>
+    </div>
+    <div class="user-bar-right">
+        <button class="ub-btn" id="btnAdminPanel" onclick="showAdminPanel()" style="display:none">⚙ ADMIN</button>
+        <button class="ub-btn" onclick="showProfileModal()">👤 PROFIL</button>
+        <button class="ub-btn ub-btn-logout" onclick="doLogout()">⏻ DÉCONNEXION</button>
+    </div>
+</div>
+
+<!-- ═══ MAIN APP ═══ -->
+<div class="app hidden" id="mainApp">
+
     <header class="hdr">
         <div class="logo">
             <span class="logo-play">▶</span>
@@ -25,33 +178,31 @@
         </div>
         <p class="tagline" id="tagline">// TRADUCTION SIMULTANÉE &nbsp;·&nbsp; DOUBLE PISTE EN TEMPS RÉEL</p>
         <div class="header-line"></div>
+        <div class="bkmk-bar">
+            <a class="bkmk-link"
+               href="javascript:(function(){window.open('http://localhost:8080/?v='+encodeURIComponent(location.href));})();"
+               onclick="event.preventDefault();alert(document.getElementById('bkmkHint').dataset.msg);"
+               title="">⊕ DualSub</a>
+            <span class="bkmk-hint" id="bkmkHint"
+                  data-msg="Glisser ce lien dans la barre de favoris. Cliquez-le ensuite sur n'importe quelle page YouTube pour ouvrir DualSub automatiquement."></span>
+        </div>
     </header>
 
-    <!-- ═══ PANNEAU CONFIG ═══ -->
     <section class="panel" id="configPanel">
+        <span class="corner tl"></span><span class="corner tr"></span>
+        <span class="corner bl"></span><span class="corner br"></span>
 
-        <!-- Coins décoratifs -->
-        <span class="corner tl"></span>
-        <span class="corner tr"></span>
-        <span class="corner bl"></span>
-        <span class="corner br"></span>
-
-        <!-- URL -->
         <div class="block">
             <p class="block-label" id="labelTarget">&#x2215;&#x2215; CIBLE &nbsp;<span class="blink">_</span></p>
             <div class="url-row">
                 <span class="url-icon">▶</span>
-                <input type="text" id="videoUrl" autocomplete="off" spellcheck="false"
-                       placeholder="https://www.youtube.com/watch?v=…" />
+                <input type="text" id="videoUrl" autocomplete="off" spellcheck="false" placeholder="https://www.youtube.com/watch?v=…" />
             </div>
         </div>
 
-        <!-- Sélecteurs de langue -->
         <div class="block">
             <p class="block-label" id="labelLangs">&#x2215;&#x2215; LANGUES</p>
             <div class="langs-grid">
-
-                <!-- Langue 1 — verte -->
                 <div class="lang-slot" id="slot1">
                     <div class="slot-header green-header">
                         <span class="slot-num">01</span>
@@ -59,40 +210,14 @@
                         <span class="slot-dot green-dot"></span>
                     </div>
                     <div class="flag-row" id="row1">
-                        <button class="flag-btn selected-green" data-code="fr" onclick="pick(1,'fr',this)">
-                            <span class="flag-icon">🇫🇷</span>
-                            <span class="flag-code">FR</span>
-                            <span class="flag-name">Français</span>
-                        </button>
-                        <button class="flag-btn" data-code="en" onclick="pick(1,'en',this)">
-                            <span class="flag-icon">🇬🇧</span>
-                            <span class="flag-code">EN</span>
-                            <span class="flag-name">English</span>
-                        </button>
-                        <button class="flag-btn" data-code="es" onclick="pick(1,'es',this)">
-                            <span class="flag-icon">🇪🇸</span>
-                            <span class="flag-code">ES</span>
-                            <span class="flag-name">Español</span>
-                        </button>
-                        <button class="flag-btn" data-code="it" onclick="pick(1,'it',this)">
-                            <span class="flag-icon">🇮🇹</span>
-                            <span class="flag-code">IT</span>
-                            <span class="flag-name">Italiano</span>
-                        </button>
-                        <button class="flag-btn" data-code="de" onclick="pick(1,'de',this)">
-                            <span class="flag-icon">🇩🇪</span>
-                            <span class="flag-code">DE</span>
-                            <span class="flag-name">Deutsch</span>
-                        </button>
-                        <button class="flag-btn" data-code="pl" onclick="pick(1,'pl',this)">
-                            <span class="flag-icon">🇵🇱</span>
-                            <span class="flag-code">PL</span>
-                            <span class="flag-name">Polski</span>
-                        </button>
+                        <button class="flag-btn selected-green" data-code="fr" onclick="pick(1,'fr',this)"><span class="flag-icon">🇫🇷</span><span class="flag-code">FR</span><span class="flag-name">Français</span></button>
+                        <button class="flag-btn" data-code="en" onclick="pick(1,'en',this)"><span class="flag-icon">🇬🇧</span><span class="flag-code">EN</span><span class="flag-name">English</span></button>
+                        <button class="flag-btn" data-code="es" onclick="pick(1,'es',this)"><span class="flag-icon">🇪🇸</span><span class="flag-code">ES</span><span class="flag-name">Español</span></button>
+                        <button class="flag-btn" data-code="it" onclick="pick(1,'it',this)"><span class="flag-icon">🇮🇹</span><span class="flag-code">IT</span><span class="flag-name">Italiano</span></button>
+                        <button class="flag-btn" data-code="de" onclick="pick(1,'de',this)"><span class="flag-icon">🇩🇪</span><span class="flag-code">DE</span><span class="flag-name">Deutsch</span></button>
+                        <button class="flag-btn" data-code="pl" onclick="pick(1,'pl',this)"><span class="flag-icon">🇵🇱</span><span class="flag-code">PL</span><span class="flag-name">Polski</span></button>
                     </div>
                 </div>
-
-                <!-- Langue 2 — orange -->
                 <div class="lang-slot" id="slot2">
                     <div class="slot-header orange-header">
                         <span class="slot-num">02</span>
@@ -100,43 +225,17 @@
                         <span class="slot-dot orange-dot"></span>
                     </div>
                     <div class="flag-row" id="row2">
-                        <button class="flag-btn" data-code="fr" onclick="pick(2,'fr',this)">
-                            <span class="flag-icon">🇫🇷</span>
-                            <span class="flag-code">FR</span>
-                            <span class="flag-name">Français</span>
-                        </button>
-                        <button class="flag-btn" data-code="en" onclick="pick(2,'en',this)">
-                            <span class="flag-icon">🇬🇧</span>
-                            <span class="flag-code">EN</span>
-                            <span class="flag-name">English</span>
-                        </button>
-                        <button class="flag-btn" data-code="es" onclick="pick(2,'es',this)">
-                            <span class="flag-icon">🇪🇸</span>
-                            <span class="flag-code">ES</span>
-                            <span class="flag-name">Español</span>
-                        </button>
-                        <button class="flag-btn" data-code="it" onclick="pick(2,'it',this)">
-                            <span class="flag-icon">🇮🇹</span>
-                            <span class="flag-code">IT</span>
-                            <span class="flag-name">Italiano</span>
-                        </button>
-                        <button class="flag-btn selected-orange" data-code="de" onclick="pick(2,'de',this)">
-                            <span class="flag-icon">🇩🇪</span>
-                            <span class="flag-code">DE</span>
-                            <span class="flag-name">Deutsch</span>
-                        </button>
-                        <button class="flag-btn" data-code="pl" onclick="pick(2,'pl',this)">
-                            <span class="flag-icon">🇵🇱</span>
-                            <span class="flag-code">PL</span>
-                            <span class="flag-name">Polski</span>
-                        </button>
+                        <button class="flag-btn" data-code="fr" onclick="pick(2,'fr',this)"><span class="flag-icon">🇫🇷</span><span class="flag-code">FR</span><span class="flag-name">Français</span></button>
+                        <button class="flag-btn" data-code="en" onclick="pick(2,'en',this)"><span class="flag-icon">🇬🇧</span><span class="flag-code">EN</span><span class="flag-name">English</span></button>
+                        <button class="flag-btn" data-code="es" onclick="pick(2,'es',this)"><span class="flag-icon">🇪🇸</span><span class="flag-code">ES</span><span class="flag-name">Español</span></button>
+                        <button class="flag-btn" data-code="it" onclick="pick(2,'it',this)"><span class="flag-icon">🇮🇹</span><span class="flag-code">IT</span><span class="flag-name">Italiano</span></button>
+                        <button class="flag-btn selected-orange" data-code="de" onclick="pick(2,'de',this)"><span class="flag-icon">🇩🇪</span><span class="flag-code">DE</span><span class="flag-name">Deutsch</span></button>
+                        <button class="flag-btn" data-code="pl" onclick="pick(2,'pl',this)"><span class="flag-icon">🇵🇱</span><span class="flag-code">PL</span><span class="flag-name">Polski</span></button>
                     </div>
                 </div>
-
-            </div><!-- /langs-grid -->
+            </div>
         </div>
 
-        <!-- Mode Immersion -->
         <div class="block imm-block">
             <label class="imm-label" for="immersionCheck">
                 <input type="checkbox" id="immersionCheck" onchange="toggleImmersion(this)">
@@ -148,7 +247,6 @@
             </label>
         </div>
 
-        <!-- Bouton -->
         <div class="block action-block">
             <button class="btn-fire" id="btnProcess" onclick="processVideo()">
                 <span class="fire-glyph">⚡</span>
@@ -158,77 +256,105 @@
             <div id="errorBox" class="error-box hidden"></div>
         </div>
 
-        <!-- Barre de progression SSE (visible pendant le chargement) -->
         <div id="progressPanel" class="progress-panel hidden"></div>
+    </section>
 
-    </section><!-- /configPanel -->
-
-
-    <!-- ═══ HISTORIQUE ═══ -->
     <section class="panel hist-panel hidden" id="historyPanel">
-        <span class="corner tl"></span>
-        <span class="corner tr"></span>
-        <span class="corner bl"></span>
-        <span class="corner br"></span>
-
+        <span class="corner tl"></span><span class="corner tr"></span>
+        <span class="corner bl"></span><span class="corner br"></span>
         <div class="hist-header" onclick="toggleHistoryPanel()">
             <p class="block-label" id="labelHistory">&#x2215;&#x2215; HISTORIQUE</p>
             <span class="hist-count" id="histCount"></span>
             <span class="hist-chevron" id="histChevron">▼</span>
         </div>
-
         <div id="historyList" class="hist-list"></div>
     </section>
 
-
-    <!-- ═══ LAYOUT LECTEUR (flex-row : sidebar historique + player) ═══ -->
     <div class="player-layout hidden" id="playerLayout">
+        <section class="player-section" id="playerSection">
+            <div class="player-wrap">
+                <span class="corner tl"></span><span class="corner tr"></span>
+                <div id="youtubePlayer"></div>
+            </div>
+            <div class="hud">
+                <span class="corner bl"></span><span class="corner br"></span>
+                <div class="hud-statusbar">
+                    <span id="hudStatus" class="hud-status-text"></span>
+                    <span id="hudTime"   class="hud-time-text"></span>
+                </div>
+                <div class="hud-track green-track">
+                    <span class="hud-badge green-badge" id="lang1Badge">FR</span>
+                    <span class="hud-text" id="subtitleText1">&nbsp;</span>
+                </div>
+                <div class="hud-sep"></div>
+                <div class="hud-track orange-track">
+                    <span class="hud-badge orange-badge" id="lang2Badge">DE</span>
+                    <span class="hud-text" id="subtitleText2">&nbsp;</span>
+                </div>
+            </div>
+            <!-- ═══ PLAYER TOOLBAR ═══ -->
+            <div class="player-toolbar" id="playerToolbar">
+                <div class="speed-bar">
+                    <span class="tb-label">VITESSE</span>
+                    <button class="speed-btn" data-rate="0.75" onclick="setSpeed(0.75)">0.75×</button>
+                    <button class="speed-btn speed-active" data-rate="1"    onclick="setSpeed(1)">1×</button>
+                    <button class="speed-btn" data-rate="1.25" onclick="setSpeed(1.25)">1.25×</button>
+                    <button class="speed-btn" data-rate="1.5"  onclick="setSpeed(1.5)">1.5×</button>
+                    <button class="speed-btn" data-rate="2"    onclick="setSpeed(2)">2×</button>
+                </div>
+                <div class="toolbar-sep"></div>
+                <button class="toolbar-btn" id="btnTranscript" onclick="toggleTranscript()">≡ TRANSCRIPTION</button>
+                <div class="toolbar-sep"></div>
+                <div class="export-group">
+                    <span class="tb-label">EXPORT</span>
+                    <button class="toolbar-btn" onclick="exportSRT(1)">↓ SRT <span id="exportLabel1">01</span></button>
+                    <button class="toolbar-btn" onclick="exportSRT(2)">↓ SRT <span id="exportLabel2">02</span></button>
+                    <button class="toolbar-btn" onclick="exportTXT()">↓ TXT</button>
+                </div>
+            </div>
 
-    <!-- historyPanel est déplacé ici par JS au moment de la lecture -->
+            <!-- ═══ TRANSCRIPT PANEL ═══ -->
+            <div class="transcript-panel hidden" id="transcriptPanel">
+                <div class="transcript-header">
+                    <span class="tr-head-time"></span>
+                    <span class="tr-head tr-head-green" id="trHead1">PISTE 1</span>
+                    <span class="tr-head tr-head-orange" id="trHead2">PISTE 2</span>
+                </div>
+                <div class="transcript-inner" id="transcriptInner"></div>
+            </div>
 
-    <!-- ═══ LECTEUR + HUD ═══ -->
-    <section class="player-section" id="playerSection">
+            <button class="btn-back" id="btnBack" onclick="resetApp()">◄ &nbsp;RETOUR</button>
+        </section>
+    </div>
 
-        <div class="player-wrap">
-            <!-- Coins -->
-            <span class="corner tl"></span>
-            <span class="corner tr"></span>
-            <div id="youtubePlayer"></div>
+</div><!-- /mainApp -->
+
+<!-- ═══ PROFILE MODAL ═══ -->
+<div class="modal-overlay hidden" id="profileModal">
+    <div class="modal-box">
+        <div class="modal-header">
+            <span class="modal-title">// PROFIL UTILISATEUR</span>
+            <button class="modal-close" onclick="closeProfileModal()">✕</button>
         </div>
+        <div class="modal-body" id="profileModalBody"></div>
+    </div>
+</div>
 
-        <!-- HUD sous-titres -->
-        <div class="hud">
-            <span class="corner bl"></span>
-            <span class="corner br"></span>
-
-            <!-- Barre de statut / debug -->
-            <div class="hud-statusbar">
-                <span id="hudStatus" class="hud-status-text"></span>
-                <span id="hudTime"   class="hud-time-text"></span>
-            </div>
-
-            <div class="hud-track green-track">
-                <span class="hud-badge green-badge" id="lang1Badge">FR</span>
-                <span class="hud-text" id="subtitleText1">&nbsp;</span>
-            </div>
-
-            <div class="hud-sep"></div>
-
-            <div class="hud-track orange-track">
-                <span class="hud-badge orange-badge" id="lang2Badge">DE</span>
-                <span class="hud-text" id="subtitleText2">&nbsp;</span>
-            </div>
-        </div>
-
-<button class="btn-back" id="btnBack" onclick="resetApp()">◄ &nbsp;RETOUR</button>
-
-    </section>
-
-    </div><!-- /playerLayout -->
-
-</div><!-- /app -->
+<!-- ═══ ADMIN PANEL ═══ -->
+<div class="admin-panel hidden" id="adminPanel">
+    <div class="admin-header">
+        <span class="admin-title">⚙ ADMINISTRATION DUALSUB</span>
+        <button class="admin-close" onclick="hideAdminPanel()">✕ FERMER</button>
+    </div>
+    <div class="admin-tabs">
+        <button class="admin-tab active" id="adminTabUsers"   onclick="showAdminTab('users')">UTILISATEURS</button>
+        <button class="admin-tab"        id="adminTabSupport" onclick="showAdminTab('support')">TICKETS SUPPORT</button>
+        <button class="admin-tab"        id="adminTabStats"   onclick="showAdminTab('stats')">STATISTIQUES</button>
+    </div>
+    <div class="admin-content" id="adminContent"></div>
+</div>
 
 <script src="https://www.youtube.com/iframe_api"></script>
-<script src="app.js?v=10"></script>
+<script src="app.js?v=13"></script>
 </body>
 </html>

@@ -8,6 +8,7 @@ import com.dualsub.model.WatchHistory;
 import com.dualsub.repository.TranscriptCacheRepository;
 import com.dualsub.repository.TranslationCacheRepository;
 import com.dualsub.repository.UserPreferencesRepository;
+import com.dualsub.repository.UserRepository;
 import com.dualsub.repository.WatchHistoryRepository;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -16,6 +17,7 @@ import com.dualsub.model.SubtitleEntry;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import javax.net.ssl.SSLContext;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -41,20 +43,25 @@ public class PersistenceService {
     private final TranscriptCacheRepository   cacheRepo;
     private final TranslationCacheRepository  translationCacheRepo;
     private final WatchHistoryRepository      historyRepo;
+    private final UserRepository              userRepository;
     private final ObjectMapper objectMapper = new ObjectMapper();
-
-    private final HttpClient httpClient = HttpClient.newBuilder()
-        .connectTimeout(Duration.ofSeconds(5))
-        .build();
+    private final HttpClient httpClient;
 
     public PersistenceService(UserPreferencesRepository  prefsRepo,
                               TranscriptCacheRepository  cacheRepo,
                               TranslationCacheRepository translationCacheRepo,
-                              WatchHistoryRepository     historyRepo) {
+                              WatchHistoryRepository     historyRepo,
+                              UserRepository             userRepository,
+                              SSLContext appSslContext) {
         this.prefsRepo            = prefsRepo;
         this.cacheRepo            = cacheRepo;
         this.translationCacheRepo = translationCacheRepo;
         this.historyRepo          = historyRepo;
+        this.userRepository       = userRepository;
+        this.httpClient = HttpClient.newBuilder()
+            .sslContext(appSslContext)
+            .connectTimeout(Duration.ofSeconds(5))
+            .build();
     }
 
     // ─── User preferences ──────────────────────────────────────────────────
@@ -176,7 +183,7 @@ public class PersistenceService {
      * Fetches the video title and thumbnail via YouTube oEmbed (best-effort, 5 s timeout).
      */
     @Transactional
-    public void recordWatch(String videoId, String lang1, String lang2) {
+    public void recordWatch(String videoId, String lang1, String lang2, Long userId) {
         try {
             String title        = null;
             String thumbnailUrl = String.format(THUMBNAIL_URL, videoId);
@@ -214,6 +221,10 @@ public class PersistenceService {
             entry.setLang1(lang1);
             entry.setLang2(lang2);
             entry.setWatchedAt(LocalDateTime.now());
+            // Link to user if authenticated
+            if (userId != null) {
+                userRepository.findById(userId).ifPresent(entry::setUser);
+            }
             historyRepo.save(entry);
             System.out.println("[History] Recorded watch: " + videoId
                 + " [" + lang1 + "/" + lang2 + "]"

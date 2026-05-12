@@ -1,0 +1,17 @@
+databaseChangeLog:
+  - changeSet:
+      id: 010
+      author: dualsub
+      changes:
+        - addColumn:
+            tableName: users
+            columns:
+              - column:
+                  name: failed_login_attempts
+                  type: INT
+                  defaultValueNumeric: 0
+                  constraints:
+                    nullable: false
+              - column:
+                  name: account_locked_until
+                  type: TIMESTAMP

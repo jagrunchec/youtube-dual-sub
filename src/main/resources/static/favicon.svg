@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16">
+  <defs>
+    <!-- Clip everything to a rounded square -->
+    <clipPath id="r">
+      <rect width="16" height="16" rx="3"/>
+    </clipPath>
+  </defs>
+
+  <!-- Split background: green (track 1) / orange (track 2) -->
+  <g clip-path="url(#r)">
+    <rect x="0" y="0" width="8"  height="16" fill="#00cc6e"/>
+    <rect x="8" y="0" width="8"  height="16" fill="#ff7b00"/>
+  </g>
+
+  <!-- White play arrow spanning both halves -->
+  <polygon points="4,3 4,13 13,8" fill="white"/>
+</svg>

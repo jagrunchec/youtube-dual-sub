@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Service;
 
+import javax.net.ssl.SSLContext;
 import java.io.IOException;
 import java.net.URLEncoder;
 import java.net.http.HttpClient;
@@ -30,10 +31,15 @@ public class TranslationService {
     // Line separator: plain newline — subtitle text never contains newlines after cleaning
     private static final String SEP = "\n";
 
-    private final HttpClient httpClient = HttpClient.newBuilder()
-        .followRedirects(HttpClient.Redirect.NORMAL)
-        .connectTimeout(Duration.ofSeconds(20))
-        .build();
+    private final HttpClient httpClient;
+
+    public TranslationService(SSLContext appSslContext) {
+        this.httpClient = HttpClient.newBuilder()
+            .sslContext(appSslContext)
+            .followRedirects(HttpClient.Redirect.NORMAL)
+            .connectTimeout(Duration.ofSeconds(20))
+            .build();
+    }
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
