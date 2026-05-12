@@ -1384,39 +1384,28 @@ body {
 }
 
 /* ══════════════════════════════════════════════════════════════
-   FLOATING HELP BUTTON (fixed, bottom-right, always visible)
+   HELP BUTTON (user bar — compact circle)
    ══════════════════════════════════════════════════════════════ */
-.help-fab {
-    position: fixed; bottom: 1.6rem; right: 1.6rem; z-index: 450;
-    width: 36px; height: 36px; border-radius: 50%;
-    background: rgba(168,85,247,.14);
-    border: 1px solid rgba(168,85,247,.4);
+.ub-help-btn {
+    width: 30px; height: 30px; border-radius: 50%; flex-shrink: 0;
+    background: rgba(168,85,247,.12);
+    border: 1px solid rgba(168,85,247,.38);
     color: #a855f7;
-    font-family: 'Orbitron', monospace; font-size: .9rem; font-weight: 700;
+    font-family: 'Orbitron', monospace; font-size: .78rem; font-weight: 700;
     cursor: pointer; line-height: 1;
     display: flex; align-items: center; justify-content: center;
-    box-shadow: 0 2px 14px rgba(168,85,247,.18);
-    transition: background .2s, box-shadow .2s, transform .2s, border-color .2s;
-    user-select: none;
+    transition: background .18s, box-shadow .18s, border-color .18s;
 }
-.help-fab:hover {
-    background: rgba(168,85,247,.28);
+.ub-help-btn:hover {
+    background: rgba(168,85,247,.26);
     border-color: rgba(168,85,247,.65);
-    box-shadow: 0 0 22px rgba(168,85,247,.38);
-    transform: scale(1.12);
+    box-shadow: 0 0 12px rgba(168,85,247,.32);
 }
-.help-fab:active { transform: scale(1.05); }
-/* Light-theme variant */
-body.theme-light .help-fab {
-    background: rgba(124,58,237,.1);
-    border-color: rgba(124,58,237,.35);
-    color: #7c3aed;
-    box-shadow: 0 2px 10px rgba(124,58,237,.15);
+body.theme-light .ub-help-btn {
+    background: rgba(124,58,237,.09); border-color: rgba(124,58,237,.32); color: #7c3aed;
 }
-body.theme-light .help-fab:hover {
-    background: rgba(124,58,237,.22);
-    border-color: rgba(124,58,237,.6);
-    box-shadow: 0 0 18px rgba(124,58,237,.3);
+body.theme-light .ub-help-btn:hover {
+    background: rgba(124,58,237,.2); border-color: rgba(124,58,237,.6);
 }
 
 /* ══════════════════════════════════════════════════════════════
