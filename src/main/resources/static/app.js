@@ -1846,10 +1846,19 @@ function toggleFocusMode() {
     }
 }
 
+// AUTO-PAUSE timing constants
+// Speech rate: ~55 ms per character ≈ 3 words/second at ~5 chars/word.
+// When the estimated silence after speech is >= FOCUS_MIN_SIL ms we pause
+// midway through that silence; otherwise we fall back to 80 ms before the end.
+const FOCUS_CHAR_MS = 55;
+const FOCUS_MIN_SIL = 350;
+
 /**
- * Called every sync tick when focus mode is on and not already paused.
- * Pauses the video 80 ms before the end of the current subtitle so the
- * user has a moment to read the phrase before the next one begins.
+ * Called every sync tick when AUTO-PAUSE mode is on and not already paused.
+ * Estimates the speech duration from text length to locate the silence gap
+ * after each sentence, then pauses midway through that gap.
+ * Falls back to 80 ms before the subtitle boundary when no meaningful silence
+ * is detected.
  */
 function checkFocusPause(nowMs) {
     // Use the longer subtitle list for boundary detection
@@ -1867,8 +1876,19 @@ function checkFocusPause(nowMs) {
     if (best === _focusPauseSubIdx) return;           // already paused at this boundary
 
     const s = subs[best];
-    const endMs = s.startMs + s.durationMs;
-    if (nowMs >= endMs - 80) {              // within 80 ms of boundary
+
+    // Estimate the spoken portion of this entry's duration.
+    // Cap at 90 % so we never overshoot into the silence of a fast speaker.
+    const speechMs  = Math.min((s.text || '').length * FOCUS_CHAR_MS, s.durationMs * 0.90);
+    const silenceMs = s.durationMs - speechMs;
+
+    // If there is a meaningful silence after the speech, pause in the middle of it.
+    // Otherwise fall back to just before the next phrase (original behaviour).
+    const pauseAt = silenceMs >= FOCUS_MIN_SIL
+        ? s.startMs + speechMs + silenceMs * 0.5
+        : s.startMs + s.durationMs - 80;
+
+    if (nowMs >= pauseAt) {
         _focusPauseSubIdx = best;
         player.pauseVideo();
         focusPaused = true;
