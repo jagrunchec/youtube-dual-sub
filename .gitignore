@@ -56,3 +56,4 @@ desktop.ini
 .env
 .env.*
 application-local.properties
+data/
