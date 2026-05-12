@@ -23,6 +23,7 @@ function showApp() {
     document.getElementById('authOverlay').classList.add('hidden');
     document.getElementById('userBar').classList.remove('hidden');
     document.getElementById('mainApp').classList.remove('hidden');
+    document.getElementById('helpFab').classList.remove('hidden');
     renderUserBar();
     // Show help automatically on first visit
     if (!localStorage.getItem('dualsubHelpSeen')) {
@@ -34,6 +35,7 @@ function showAuthOverlay() {
     document.getElementById('authOverlay').classList.remove('hidden');
     document.getElementById('userBar').classList.add('hidden');
     document.getElementById('mainApp').classList.add('hidden');
+    document.getElementById('helpFab').classList.add('hidden');
 }
 
 /* ── User bar ───────────────────────────────────────────────── */
@@ -624,7 +626,7 @@ let _positionTimer     = null;   // setInterval handle for position autosave
 let _pendingResume     = null;   // saved position ms to offer as resume
 let searchMatches      = [];     // transcript row indices matching current search
 let searchIndex        = -1;     // which match is active
-let currentTheme       = localStorage.getItem('dualsubTheme') || 'dark';
+let currentTheme       = localStorage.getItem('dualsubTheme') || 'light';
 
 const LANG_LABELS = {
     fr: 'Français', en: 'English', es: 'Español',

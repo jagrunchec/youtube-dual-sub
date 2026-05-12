@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Exo+2:wght@300;400;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css?v=15">
+    <link rel="stylesheet" href="style.css?v=16">
 </head>
 <body>
 
@@ -164,7 +164,6 @@
     <div class="user-bar-right">
         <button class="ub-btn" id="btnAdminPanel" onclick="showAdminPanel()" style="display:none">⚙ ADMIN</button>
         <button class="ub-btn" id="btnTheme" onclick="toggleTheme()">☀ THÈME</button>
-        <button class="ub-btn ub-btn-help" onclick="showHelp()" title="Aide &amp; raccourcis">? AIDE</button>
         <button class="ub-btn" onclick="showProfileModal()">👤 PROFIL</button>
         <button class="ub-btn ub-btn-logout" onclick="doLogout()">⏻ DÉCONNEXION</button>
     </div>
@@ -373,6 +372,9 @@
     <div class="admin-content" id="adminContent"></div>
 </div>
 
+<!-- ═══ FLOATING HELP BUTTON ═══ -->
+<button class="help-fab hidden" id="helpFab" onclick="showHelp()" title="Aide &amp; raccourcis clavier">?</button>
+
 <!-- ═══ HELP MODAL ═══ -->
 <div class="modal-overlay hidden" id="helpModal">
     <div class="modal-box help-modal-box">
@@ -506,6 +508,6 @@
 </div>
 
 <script src="https://www.youtube.com/iframe_api"></script>
-<script src="app.js?v=15"></script>
+<script src="app.js?v=16"></script>
 </body>
 </html>
