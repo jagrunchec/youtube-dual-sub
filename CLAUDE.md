@@ -8,6 +8,8 @@ DualSub is a local web application that plays a YouTube video and shows two simu
 
 ## Build and run
 
+### Windows
+
 Maven is not on the system PATH. Use the local installation:
 
 ```
@@ -18,18 +20,48 @@ C:\Users\User\maven\apache-maven-3.9.9\bin\mvn.cmd clean package -DskipTests
 java -jar target\youtube-dual-sub-1.0.0.jar
 ```
 
-The app is served at `http://localhost:8080`.
-
 Kill the running server with `taskkill /F /IM java.exe` before rebuilding. Wait ~2 s after killing before running `clean` — Maven's clean will fail if the JAR is still locked by the Java process.
+
+### Linux / WSL2 (recommended for Claude Code agentic mode)
+
+The project runs natively in WSL2 (Ubuntu). One-command startup:
+
+```bash
+./start-dev.sh          # Spring Boot + cloudflared + Claude Code in tmux
+./start-dev.sh --build  # rebuild JAR first
+./start-dev.sh --no-claude  # without Claude Code pane
+```
+
+Manual build and run:
+```bash
+mvn clean package -DskipTests -q
+java -jar target/youtube-dual-sub-1.0.0.jar --spring.profiles.active=linux
+```
+
+The app is served at `http://localhost:8080` and exposed publicly via Cloudflare Quick Tunnel
+(`cloudflared tunnel --url http://localhost:8080`). The tunnel URL changes on each restart.
+
+tmux session is named `dualsub`. Reattach with `tmux attach -t dualsub`.
+
+### Spring Boot profiles
+
+| Profile | Python path | Mail |
+|---|---|---|
+| *(none / windows)* | `C:/Python314/python.exe` | disabled |
+| `linux` | `/usr/bin/python3` | disabled |
+
+Profile files: `application-linux.properties`, `application-windows.properties`.
 
 ## Python dependencies
 
-Two Python scripts are invoked as subprocesses. Both libraries must be installed for the exact executable configured in `application.properties`:
-
+### Windows
 ```
-C:\Python314\python.exe -m pip install youtube-transcript-api
-C:\Python314\python.exe -m pip install deepmultilingualpunctuation
-C:\Python314\python.exe -m pip install transformers
+C:\Python314\python.exe -m pip install youtube-transcript-api deepmultilingualpunctuation transformers
+```
+
+### Linux / WSL2
+```bash
+pip3 install youtube-transcript-api deepmultilingualpunctuation transformers --break-system-packages
 ```
 
 `deepmultilingualpunctuation` downloads the `oliverguhr/fullstop-punctuation-multilang-large` model (~680 MB) from Hugging Face on the first run. Subsequent runs use the local cache (`~/.cache/huggingface`). If the library is not installed, the punctuation step is silently skipped.
