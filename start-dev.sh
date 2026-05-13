@@ -34,26 +34,14 @@ fi
 tmux kill-session -t "$SESSION" 2>/dev/null || true
 rm -f /tmp/cf.log
 
-# ── 3. Script cloudflared : attend l'URL et l'affiche clairement ──────────
+# ── 3. Script cloudflared : tunnel permanent ─────────────────────────────
 CF_SCRIPT=$(cat <<'CFEOF'
-cloudflared tunnel --url http://localhost:8080 > /tmp/cf.log 2>&1 &
-CF_PID=$!
-echo ">>> cloudflared démarré (PID $CF_PID), attente de l'URL..."
-for i in $(seq 1 30); do
-  URL=$(grep -oE 'https://[a-z0-9-]+\.trycloudflare\.com' /tmp/cf.log 2>/dev/null | head -1)
-  if [ -n "$URL" ]; then
-    echo ""
-    echo "╔══════════════════════════════════════════════════════╗"
-    echo "║  URL PUBLIQUE :                                      ║"
-    echo "║  $URL"
-    echo "╚══════════════════════════════════════════════════════╝"
-    echo ""
-    break
-  fi
-  sleep 1
-done
-# Garder le pane vivant et afficher les logs cloudflared
-tail -f /tmp/cf.log
+echo ""
+echo "╔══════════════════════════════════════════════════════╗"
+echo "║  URL PUBLIQUE : https://app.neoventrix.uk            ║"
+echo "╚══════════════════════════════════════════════════════╝"
+echo ""
+cloudflared tunnel run dualsub
 CFEOF
 )
 
