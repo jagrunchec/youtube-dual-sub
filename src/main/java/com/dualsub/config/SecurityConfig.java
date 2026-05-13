@@ -22,6 +22,10 @@ public class SecurityConfig {
             // Disable CSRF — SPA uses session cookie (SameSite=Lax is enough for localhost)
             .csrf(csrf -> csrf.disable())
 
+            // H2 console uses iframes — allow sameOrigin framing
+            .headers(headers -> headers
+                .frameOptions(frame -> frame.sameOrigin()))
+
             .authorizeHttpRequests(auth -> auth
                 // Public: auth endpoints + static front-end resources
                 .requestMatchers(
@@ -30,6 +34,8 @@ public class SecurityConfig {
                     "/favicon.svg", "/favicon.ico",
                     "/*.js", "/*.css", "/*.svg", "/*.png", "/*.ico"
                 ).permitAll()
+                // H2 console — dev only, network-level access controlled by web-allow-others
+                .requestMatchers("/h2-console/**").permitAll()
                 // Admin-only
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")
                 // Everything else requires login
