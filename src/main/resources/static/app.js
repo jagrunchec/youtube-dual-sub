@@ -904,6 +904,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     initTheme();
     initKeyboardShortcuts();
 
+    // Render flag emoji as SVG images via Twemoji (Windows desktop doesn't support flag emoji natively)
+    if (typeof twemoji !== 'undefined') {
+        document.querySelectorAll('.flag-icon').forEach(el => {
+            twemoji.parse(el, {
+                folder: 'svg', ext: '.svg',
+                base: 'https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/'
+            });
+        });
+    }
+
     // Load security questions and populate profile fields for the registration form
     loadSecurityQuestions();
     populateRegisterProfile();

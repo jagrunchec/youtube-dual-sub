@@ -1851,6 +1851,91 @@ body.theme-light .pf input, body.theme-light .pf select, body.theme-light .pf te
 body.theme-light .pf-check { color: #1a2a3a; background: rgba(0,0,0,.03); border-color: rgba(0,0,0,.08); }
 body.theme-light .pwd-toggle { background: rgba(0,102,204,.06); border-color: rgba(0,102,204,.2); color: #1a2a3a; }
 
+/* Admin panel — light theme overrides */
+body.theme-light .admin-panel { background: #f0f4fb; }
+body.theme-light .admin-header {
+    background: #ffffff; border-bottom-color: rgba(0,102,204,.2);
+}
+body.theme-light .admin-title { color: #0055a5; }
+body.theme-light .admin-close {
+    background: rgba(204,34,0,.06); border-color: rgba(204,34,0,.25); color: #cc2200;
+}
+body.theme-light .admin-close:hover { background: rgba(204,34,0,.12); }
+body.theme-light .admin-tabs {
+    background: #ffffff; border-bottom-color: rgba(0,102,204,.12);
+}
+body.theme-light .admin-tab { color: rgba(0,0,0,.4); }
+body.theme-light .admin-tab.active { color: #0066cc; border-bottom-color: #0066cc; }
+body.theme-light .admin-tab:hover:not(.active) { color: rgba(0,0,0,.65); }
+body.theme-light .admin-content { background: #f0f4fb; }
+body.theme-light .admin-loading,
+body.theme-light .admin-empty   { color: rgba(0,0,0,.35); }
+body.theme-light .admin-table th {
+    color: rgba(0,85,165,.8); border-bottom-color: rgba(0,102,204,.18);
+}
+body.theme-light .admin-table td {
+    border-bottom-color: rgba(0,0,0,.05); color: #2d3a4a;
+}
+body.theme-light .admin-table tr:hover td { background: rgba(0,102,204,.04); }
+body.theme-light .row-inactive td { opacity: .5; }
+body.theme-light .td-email { color: rgba(0,0,0,.5); }
+body.theme-light .td-date  { color: rgba(0,0,0,.38); }
+body.theme-light .td-muted { color: rgba(0,0,0,.28); }
+body.theme-light .admin-select {
+    background: #f8faff; border-color: rgba(0,102,204,.3);
+    color: #0055a5;
+}
+body.theme-light .admin-num-input {
+    background: #f8faff; border-color: rgba(0,102,204,.25); color: #0055a5;
+}
+body.theme-light .admin-btn {
+    background: rgba(0,102,204,.07); border-color: rgba(0,102,204,.25); color: #0055a5;
+}
+body.theme-light .admin-btn:hover { background: rgba(0,102,204,.14); }
+body.theme-light .admin-btn-close {
+    background: rgba(0,120,60,.07); border-color: rgba(0,120,60,.25); color: #007a28;
+}
+body.theme-light .admin-btn-unlock { border-color: rgba(160,100,0,.4); color: #8a5c00; }
+body.theme-light .admin-btn-delete { border-color: rgba(204,34,0,.35); color: #cc2200; }
+body.theme-light .admin-btn-delete:hover { background: rgba(204,34,0,.08); }
+body.theme-light .status-active   { background: rgba(0,100,40,.1);  color: #006428; }
+body.theme-light .status-inactive { background: rgba(204,34,0,.1);  color: #cc2200; }
+body.theme-light .status-locked   { background: rgba(140,80,0,.1);  color: #8a5000; }
+body.theme-light .role-admin    { background: rgba(140,60,0,.1); color: #8a3c00; border-color: rgba(140,60,0,.3); }
+body.theme-light .role-super    { background: rgba(100,0,180,.1); color: #5800a0; border-color: rgba(100,0,180,.3); }
+/* Support tickets — light */
+body.theme-light .support-card {
+    background: #ffffff; border-color: rgba(0,0,0,.1);
+}
+body.theme-light .support-card.closed { opacity: .65; }
+body.theme-light .support-closed { background: rgba(0,0,0,.06); color: rgba(0,0,0,.4); }
+body.theme-light .support-user    { color: #2d3a4a; }
+body.theme-light .support-date    { color: rgba(0,0,0,.38); }
+body.theme-light .support-subject { color: #1a2a3a; }
+body.theme-light .support-body    { color: #3a4a5a; }
+body.theme-light .support-response {
+    background: rgba(0,100,40,.05); border-left-color: rgba(0,100,40,.3); color: #1a5a2a;
+}
+body.theme-light .support-reply textarea {
+    background: #f8faff; border-color: rgba(0,102,204,.2); color: #1a2a3a;
+}
+/* Stats — light */
+body.theme-light .stat-card {
+    background: #ffffff; border-color: rgba(0,102,204,.2);
+}
+body.theme-light .stat-val { color: #0066cc; }
+body.theme-light .stat-warn .stat-val { color: #cc2200; }
+body.theme-light .stat-lbl { color: rgba(0,0,0,.45); }
+
+/* Flag emoji via Twemoji: size matches font-size of .flag-icon */
+.flag-icon img.emoji {
+    height: 1.7rem; width: 1.7rem;
+    vertical-align: middle; display: inline-block;
+}
+@media (max-width: 600px) {
+    .flag-icon img.emoji { height: 1.4rem; width: 1.4rem; }
+}
+
 /* ══════════════════════════════════════════════════════════════
    UTILITAIRES
    ══════════════════════════════════════════════════════════════ */
