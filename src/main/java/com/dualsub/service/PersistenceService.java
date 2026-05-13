@@ -209,11 +209,13 @@ public class PersistenceService {
                     + ": " + e.getMessage());
             }
 
-            // Upsert: find existing entry for this video and update it rather than
-            // inserting a duplicate row — one entry per video in the history list.
-            WatchHistory entry = historyRepo
-                .findTopByVideoIdOrderByWatchedAtDesc(videoId)
-                .orElse(new WatchHistory());
+            // Upsert: find existing entry for this user+video pair to avoid duplicates.
+            // Authenticated users get their own entry; anonymous requests get a shared one.
+            WatchHistory entry = (userId != null)
+                ? historyRepo.findTopByVideoIdAndUser_IdOrderByWatchedAtDesc(videoId, userId)
+                             .orElse(new WatchHistory())
+                : historyRepo.findTopByVideoIdAndUserIsNullOrderByWatchedAtDesc(videoId)
+                             .orElse(new WatchHistory());
 
             entry.setVideoId(videoId);
             entry.setVideoTitle(title);
