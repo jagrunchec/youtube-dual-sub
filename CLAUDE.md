@@ -2,6 +2,10 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Project skills
+
+A Claude Code skill for querying the H2 database is available at `.claude/skills/h2-query/SKILL.md`. Use it whenever you need to inspect the database (users, watch history, caches, preferences) — it handles the WSL2 + H2 Shell connection automatically via PowerShell.
+
 ## What this project does
 
 DualSub is a local web application that plays a YouTube video and shows two simultaneous subtitle tracks underneath it, each translated into a different language chosen by the user. The user picks a video URL and two target languages (FR, EN, ES, IT, DE, PL); the backend fetches the transcript, restores punctuation, splits into sentences, then streams progress and translations back to the browser via SSE before the video starts.
