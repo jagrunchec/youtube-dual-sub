@@ -3,6 +3,7 @@ package com.dualsub.model;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
 import com.dualsub.model.User;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 
 /**
  * One row per video-watch event.
@@ -39,6 +40,7 @@ public class WatchHistory {
     private LocalDateTime watchedAt;
 
     /** The authenticated user who watched — null for anonymous watches (legacy rows). */
+    @JsonIgnore
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = true)
     private User user;
