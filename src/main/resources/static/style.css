@@ -1957,4 +1957,17 @@ body.theme-light .stat-lbl { color: rgba(0,0,0,.45); }
     .ub-label { display: none; }
     .ub-btn { padding: .35rem .45rem; }
     .user-bar-right { gap: .25rem; }
+
+    /* Player layout — vertical stack on mobile */
+    .player-layout {
+        flex-direction: column;
+        gap: .8rem;
+    }
+    /* Player section comes first (top), history below */
+    .player-layout .player-section { order: 1; width: 100%; }
+    .hist-sidebar-mode {
+        order: 2;
+        width: 100%;
+        max-height: 300px;   /* scrollable list, not full-page */
+    }
 }
