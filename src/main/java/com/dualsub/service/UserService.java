@@ -8,6 +8,8 @@ import com.dualsub.model.User;
 import com.dualsub.repository.AccountTokenRepository;
 import com.dualsub.repository.SecurityQuestionRepository;
 import com.dualsub.repository.UserRepository;
+import com.dualsub.repository.WatchHistoryRepository;
+import com.dualsub.repository.SupportMessageRepository;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -73,18 +75,24 @@ public class UserService {
     private final UserRepository             userRepository;
     private final SecurityQuestionRepository sqRepository;
     private final AccountTokenRepository     tokenRepository;
+    private final WatchHistoryRepository      watchHistoryRepository;
+    private final SupportMessageRepository   supportMessageRepository;
     private final PasswordEncoder            passwordEncoder;
     private final EmailService               emailService;
 
     public UserService(UserRepository userRepository,
                        SecurityQuestionRepository sqRepository,
                        AccountTokenRepository tokenRepository,
+                       WatchHistoryRepository watchHistoryRepository,
+                       SupportMessageRepository supportMessageRepository,
                        PasswordEncoder passwordEncoder,
                        EmailService emailService) {
         this.userRepository  = userRepository;
         this.sqRepository    = sqRepository;
         this.tokenRepository = tokenRepository;
-        this.passwordEncoder = passwordEncoder;
+        this.watchHistoryRepository    = watchHistoryRepository;
+        this.supportMessageRepository = supportMessageRepository;
+        this.passwordEncoder           = passwordEncoder;
         this.emailService    = emailService;
     }
 
@@ -383,6 +391,28 @@ public class UserService {
         user.setAccountLockedUntil(null);
         System.out.println("[Security] Account manually unlocked for " + user.getEmail());
         return userRepository.save(user);
+    }
+
+
+    // __ Delete user (admin) __________________________________________________
+
+    /**
+     * Permanently deletes a user and all their associated data:
+     * watch history, account tokens, security questions, support messages.
+     * Cannot delete an ADMIN account.
+     */
+    @Transactional
+    public void deleteUser(Long userId) {
+        User user = getById(userId);
+        if (user.getRole() == Role.ADMIN) {
+            throw new IllegalArgumentException("Impossible de supprimer un compte ADMIN.");
+        }
+        watchHistoryRepository.deleteByUser_Id(userId);
+        tokenRepository.deleteByUser_Id(userId);
+        sqRepository.deleteByUser_Id(userId);
+        supportMessageRepository.deleteByUser_Id(userId);
+        userRepository.delete(user);
+        System.out.println("[Admin] User deleted: " + user.getEmail() + " (id=" + userId + ")");
     }
 
     // ── Helpers ──────────────────────────────────────────────────────────────

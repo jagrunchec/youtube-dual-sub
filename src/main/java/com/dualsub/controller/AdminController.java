@@ -83,6 +83,22 @@ public class AdminController {
         }
     }
 
+    @DeleteMapping("/users/{id}")
+    public ResponseEntity<?> deleteUser(@PathVariable Long id, java.security.Principal principal) {
+        try {
+            // Prevent self-deletion
+            User self = userService.getByEmail(principal.getName());
+            if (self.getId().equals(id)) {
+                return ResponseEntity.badRequest()
+                    .body(Map.of("error", "Vous ne pouvez pas supprimer votre propre compte."));
+            }
+            userService.deleteUser(id);
+            return ResponseEntity.noContent().build();
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
     // ── Support messages ──────────────────────────────────────────────────────
 
     @GetMapping("/support")

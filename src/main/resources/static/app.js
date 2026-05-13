@@ -506,6 +506,9 @@ async function renderAdminUsers(container) {
                     <button class="admin-btn" onclick="adminToggleActive(${u.id},${!u.active})">
                         ${u.active ? '🚫 Désactiver' : '✅ Activer'}
                     </button>
+                    <button class="admin-btn admin-btn-delete" onclick="adminDeleteUser(${u.id},'${esc(u.email)}')">
+                        🗑 Supprimer
+                    </button>
                 </td>
             </tr>`).join('')}
         </tbody></table></div>`;
@@ -539,6 +542,17 @@ async function adminToggleActive(userId, active) {
 
 async function adminUnlock(userId) {
     await fetch(`/api/admin/users/${userId}/unlock`, { method: 'POST' });
+    showAdminTab('users');
+}
+
+async function adminDeleteUser(userId, email) {
+    if (!confirm(`Supprimer définitivement le compte "${email}" ?\n\nToutes ses données seront effacées (historique, tokens, questions de sécurité, tickets support).\n\nCette action est irréversible.`)) return;
+    const resp = await fetch(`/api/admin/users/${userId}`, { method: 'DELETE' });
+    if (!resp.ok) {
+        const data = await resp.json().catch(() => ({}));
+        alert(data.error || 'Erreur lors de la suppression.');
+        return;
+    }
     showAdminTab('users');
 }
 

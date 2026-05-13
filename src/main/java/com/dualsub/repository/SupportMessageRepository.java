@@ -9,4 +9,5 @@ import java.util.List;
 public interface SupportMessageRepository extends JpaRepository<SupportMessage, Long> {
     List<SupportMessage> findByUserOrderByCreatedAtDesc(User user);
     List<SupportMessage> findAllByOrderByCreatedAtDesc();
+    void deleteByUser_Id(Long userId);
 }

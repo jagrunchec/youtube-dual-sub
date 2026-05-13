@@ -9,4 +9,5 @@ import java.util.List;
 public interface SecurityQuestionRepository extends JpaRepository<SecurityQuestion, Long> {
     List<SecurityQuestion> findByUserOrderByQuestionOrder(User user);
     void deleteByUser(User user);
+    void deleteByUser_Id(Long userId);
 }

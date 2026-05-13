@@ -20,4 +20,5 @@ public interface WatchHistoryRepository extends JpaRepository<WatchHistory, Long
 
     /** Returns all watch events for a given user, newest first. */
     List<WatchHistory> findByUser_IdOrderByWatchedAtDesc(Long userId);
+    void deleteByUser_Id(Long userId);
 }

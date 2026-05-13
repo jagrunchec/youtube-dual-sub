@@ -264,6 +264,8 @@
 .status-locked   { background: rgba(255,160,0,.15);  color: #ffa000; margin-left: .3rem; }
 .td-actions      { display: flex; gap: .35rem; flex-wrap: wrap; align-items: center; }
 .admin-btn-unlock { border-color: rgba(255,160,0,.4); color: #ffa000; }
+.admin-btn-delete { border-color: rgba(255,61,61,.35); color: #ff4d4d; }
+.admin-btn-delete:hover { background: rgba(255,61,61,.12); }
 .admin-btn {
     background: rgba(0,212,255,.08); border: 1px solid rgba(0,212,255,.2);
     color: #00d4ff; padding: .3rem .6rem; border-radius: 3px; cursor: pointer;
