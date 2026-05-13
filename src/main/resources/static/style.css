@@ -1949,4 +1949,12 @@ body.theme-light .stat-lbl { color: rgba(0,0,0,.45); }
     .flag-icon { font-size: 1.4rem; }
     .panel { padding: 1.2rem; gap: 1.4rem; }
     .hud-text { font-size: .95rem; }
+
+    /* User bar — icon-only mode on small screens */
+    .user-bar { padding: .4rem .75rem; gap: .5rem; }
+    .user-info, .user-quota { display: none; }
+    .user-avatar { width: 28px; height: 28px; font-size: .6rem; }
+    .ub-label { display: none; }
+    .ub-btn { padding: .35rem .45rem; }
+    .user-bar-right { gap: .25rem; }
 }

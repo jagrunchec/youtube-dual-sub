@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Exo+2:wght@300;400;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css?v=20">
+    <link rel="stylesheet" href="style.css?v=21">
     <!-- Twemoji: flag emoji rendered as SVG images (Windows desktop doesn't support flag emoji natively) -->
     <script src="https://cdn.jsdelivr.net/npm/twemoji@14.0.2/dist/twemoji.min.js" crossorigin="anonymous"></script>
 </head>
@@ -166,11 +166,11 @@
         <div class="user-quota hidden" id="userQuota"></div>
     </div>
     <div class="user-bar-right">
-        <button class="ub-btn" id="btnAdminPanel" onclick="showAdminPanel()" style="display:none">⚙ ADMIN</button>
-        <button class="ub-btn" id="btnTheme" onclick="toggleTheme()">☀ THÈME</button>
+        <button class="ub-btn" id="btnAdminPanel" onclick="showAdminPanel()" style="display:none">⚙ <span class="ub-label">ADMIN</span></button>
+        <button class="ub-btn" id="btnTheme" onclick="toggleTheme()">☀ <span class="ub-label">THÈME</span></button>
         <button class="ub-help-btn" onclick="showHelp()" title="Aide &amp; raccourcis clavier">?</button>
-        <button class="ub-btn" onclick="showProfileModal()">👤 PROFIL</button>
-        <button class="ub-btn ub-btn-logout" onclick="doLogout()">⏻ DÉCONNEXION</button>
+        <button class="ub-btn" onclick="showProfileModal()">👤 <span class="ub-label">PROFIL</span></button>
+        <button class="ub-btn ub-btn-logout" onclick="doLogout()">⏻ <span class="ub-label">DÉCONNEXION</span></button>
     </div>
 </div>
 
@@ -532,6 +532,6 @@
 </div>
 
 <script src="https://www.youtube.com/iframe_api"></script>
-<script src="app.js?v=20"></script>
+<script src="app.js?v=21"></script>
 </body>
 </html>

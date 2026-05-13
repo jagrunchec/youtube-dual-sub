@@ -1837,7 +1837,9 @@ function toggleTheme() {
 
 function updateThemeBtn() {
     const btn = document.getElementById('btnTheme');
-    if (btn) btn.textContent = currentTheme === 'dark' ? '☀ THÈME' : '🌙 THÈME';
+    if (btn) btn.innerHTML = currentTheme === 'dark'
+        ? '☀ <span class="ub-label">THÈME</span>'
+        : '🌙 <span class="ub-label">THÈME</span>';
 }
 
 /* ══════════════════════════════════════════════════════════════
