@@ -238,16 +238,15 @@ public class PersistenceService {
     }
 
     /**
-     * Returns the 20 most recent watch events, newest first, deduplicated by videoId.
-     * Deduplication is done in-memory so that any rows created before the upsert fix
-     * are also handled correctly.
+     * Returns the 20 most recent watch events for a given user, newest first,
+     * deduplicated by videoId (one entry per distinct video).
      */
-    public List<WatchHistory> getHistory() {
-        List<WatchHistory> all = historyRepo.findTop20ByOrderByWatchedAtDesc();
-        // LinkedHashMap preserves insertion order (newest first) and deduplicates by videoId
+    public List<WatchHistory> getHistoryForUser(Long userId) {
+        List<WatchHistory> all = historyRepo.findByUser_IdOrderByWatchedAtDesc(userId);
         Map<String, WatchHistory> seen = new LinkedHashMap<>();
         for (WatchHistory w : all) {
             seen.putIfAbsent(w.getVideoId(), w);
+            if (seen.size() == 20) break;
         }
         return new ArrayList<>(seen.values());
     }
