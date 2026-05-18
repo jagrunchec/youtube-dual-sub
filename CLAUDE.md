@@ -4,7 +4,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project skills
 
-A Claude Code skill for querying the H2 database is available at `.claude/skills/h2-query/SKILL.md`. Use it whenever you need to inspect the database (users, watch history, caches, preferences) — it handles the WSL2 + H2 Shell connection automatically via PowerShell.
+| Skill | Path | When to use |
+|---|---|---|
+| `h2-query` | `.claude/skills/h2-query/SKILL.md` | Inspecter la base H2 (utilisateurs, historique, caches) |
+| `deploy` | `.claude/skills/deploy/SKILL.md` | Déployer sur WSL2 : pull → build → restart → verify |
+| `status` | `.claude/skills/status/SKILL.md` | Vérifier l'état des services systemd et du tunnel Cloudflare |
+| `spring` | `.claude/skills/spring/SKILL.md` | Ajouter/modifier du code Spring Boot (entité, endpoint, migration) |
 
 ## What this project does
 
