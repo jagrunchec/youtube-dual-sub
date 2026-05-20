@@ -1035,10 +1035,11 @@ body.theme-light .wp-pill:hover:not(:has(input:checked)) { border-color: rgba(0,
 }
 
 .hud-text {
-    /* Font stack: Exo 2 handles Latin + Cyrillic (covers fr/en/es/it/de/pl/pt/nl/ru);
-       Noto Sans Devanagari covers Hindi. The browser picks per-character based on
-       glyph coverage, so a single line mixing scripts renders correctly. */
-    font-family: 'Exo 2', 'Noto Sans Devanagari', sans-serif;
+    /* Font stack: Exo 2 covers Latin + Cyrillic (fr/en/es/it/de/pl/pt/nl/ru);
+       Noto Sans Devanagari covers Hindi; Noto Sans Arabic covers Arabic.
+       The browser picks per-character based on glyph coverage, so a line
+       mixing scripts renders correctly. */
+    font-family: 'Exo 2', 'Noto Sans Devanagari', 'Noto Sans Arabic', sans-serif;
     font-size: 1.1rem;
     font-weight: 600;
     line-height: 1.4;

@@ -58,6 +58,7 @@ public class TranslationService {
         LANGUAGES.put("nl", "Nederlands");
         LANGUAGES.put("ru", "Русский");
         LANGUAGES.put("hi", "हिन्दी");
+        LANGUAGES.put("ar", "العربية");
     }
 
     public List<SubtitleEntry> translate(List<SubtitleEntry> entries, String targetLang)

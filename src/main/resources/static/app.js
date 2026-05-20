@@ -721,7 +721,7 @@ const LANG_LABELS = {
     fr: 'Français', en: 'English', es: 'Español',
     it: 'Italiano', de: 'Deutsch', pl: 'Polski',
     // Secondary-only targets (no primary picker, no immersion support)
-    pt: 'Português', nl: 'Nederlands', ru: 'Русский', hi: 'हिन्दी',
+    pt: 'Português', nl: 'Nederlands', ru: 'Русский', hi: 'हिन्दी', ar: 'العربية',
 };
 
 /* ─── Internationalisation ───────────────────────────────────── */

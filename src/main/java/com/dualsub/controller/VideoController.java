@@ -38,6 +38,10 @@ public class VideoController {
     private final ExecutorService executor = Executors.newCachedThreadPool();
     private final ObjectMapper objectMapper = new ObjectMapper();
 
+    /** Target languages where mistral-nemo struggles — skip Ollama refinement for these. */
+    private static final java.util.Set<String> OLLAMA_UNSUPPORTED_TARGETS =
+        java.util.Set.of("ar", "hi");
+
     public VideoController(YouTubeTranscriptService youTubeService,
                            TranslationService translationService,
                            PersistenceService persistenceService,
@@ -338,17 +342,28 @@ public class VideoController {
                 List<SubtitleEntry> outSubs2 = subtitles2;
 
                 if (ollamaActive) {
-                    progress.accept("{\"step\":\"ollama_translation\"}");
-                    try {
-                        if (!lang1Auto) {
-                            outSubs1 = refinementService.getOllamaService()
-                                .refine(originalEntries, subtitles1, sourceCode, lang1, null);
+                    final boolean refine1 = !lang1Auto && !OLLAMA_UNSUPPORTED_TARGETS.contains(lang1);
+                    final boolean refine2 =              !OLLAMA_UNSUPPORTED_TARGETS.contains(lang2);
+                    if (refine1 || refine2) {
+                        progress.accept("{\"step\":\"ollama_translation\"}");
+                        try {
+                            if (refine1) {
+                                outSubs1 = refinementService.getOllamaService()
+                                    .refine(originalEntries, subtitles1, sourceCode, lang1, null);
+                            }
+                            if (refine2) {
+                                outSubs2 = refinementService.getOllamaService()
+                                    .refine(originalEntries, subtitles2, sourceCode, lang2, null);
+                            }
+                            System.out.println("[Ollama] Translations refined"
+                                + (refine1 ? " [" + lang1 + "]" : " (skip " + lang1 + ")")
+                                + (refine2 ? " [" + lang2 + "]" : " (skip " + lang2 + ")"));
+                        } catch (Exception e) {
+                            System.err.println("[Ollama] Translation refinement failed: " + e.getMessage());
                         }
-                        outSubs2 = refinementService.getOllamaService()
-                            .refine(originalEntries, subtitles2, sourceCode, lang2, null);
-                        System.out.println("[Ollama] Translations refined.");
-                    } catch (Exception e) {
-                        System.err.println("[Ollama] Translation refinement failed: " + e.getMessage());
+                    } else {
+                        System.out.println("[Ollama] Both targets unsupported (" + lang1 + ", " + lang2
+                            + ") — skipping refinement entirely.");
                     }
                 }
 

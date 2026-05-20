@@ -7,8 +7,8 @@
     <link rel="icon" type="image/svg+xml" href="favicon.svg">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Exo+2:wght@300;400;600;700&family=Noto+Sans+Devanagari:wght@400;600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css?v=47">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Exo+2:wght@300;400;600;700&family=Noto+Sans+Devanagari:wght@400;600&family=Noto+Sans+Arabic:wght@400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css?v=48">
     <!-- Twemoji: flag emoji rendered as SVG images (Windows desktop doesn't support flag emoji natively) -->
     <script src="https://cdn.jsdelivr.net/npm/twemoji@14.0.2/dist/twemoji.min.js" crossorigin="anonymous"></script>
 </head>
@@ -242,6 +242,7 @@
                         <button class="flag-btn" data-code="nl" onclick="pick(2,'nl',this)"><span class="flag-icon">🇳🇱</span><span class="flag-code">NL</span><span class="flag-name">Nederlands</span></button>
                         <button class="flag-btn" data-code="ru" onclick="pick(2,'ru',this)"><span class="flag-icon">🇷🇺</span><span class="flag-code">RU</span><span class="flag-name">Русский</span></button>
                         <button class="flag-btn" data-code="hi" onclick="pick(2,'hi',this)"><span class="flag-icon">🇮🇳</span><span class="flag-code">HI</span><span class="flag-name">हिन्दी</span></button>
+                        <button class="flag-btn" data-code="ar" onclick="pick(2,'ar',this)"><span class="flag-icon">🇸🇦</span><span class="flag-code">AR</span><span class="flag-name">العربية</span></button>
                     </div>
                 </div>
             </div>
@@ -323,12 +324,12 @@
                     </div>
                     <div class="hud-track green-track">
                         <span class="hud-badge green-badge" id="lang1Badge">FR</span>
-                        <span class="hud-text" id="subtitleText1">&nbsp;</span>
+                        <span class="hud-text" id="subtitleText1" dir="auto">&nbsp;</span>
                     </div>
                     <div class="hud-sep"></div>
                     <div class="hud-track orange-track">
                         <span class="hud-badge orange-badge" id="lang2Badge">DE</span>
-                        <span class="hud-text" id="subtitleText2">&nbsp;</span>
+                        <span class="hud-text" id="subtitleText2" dir="auto">&nbsp;</span>
                     </div>
                 </div>
             </div>
@@ -671,6 +672,6 @@
 </div>
 
 <script src="https://www.youtube.com/iframe_api"></script>
-<script src="app.js?v=48"></script>
+<script src="app.js?v=49"></script>
 </body>
 </html>
