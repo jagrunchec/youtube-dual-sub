@@ -554,6 +554,32 @@ body {
 .block { display: flex; flex-direction: column; gap: .75rem; }
 .action-block { gap: .75rem; }
 
+.action-row {
+    display: flex; align-items: stretch; gap: .6rem;
+}
+.action-row .btn-fire { flex: 1; }
+
+/* ── Cancel button ───────────────────────────────────────────── */
+.btn-cancel {
+    flex-shrink: 0;
+    background: transparent;
+    border: 1.5px solid rgba(255, 70, 70, .45);
+    color: rgba(255, 100, 100, .85);
+    font-family: 'Orbitron', monospace;
+    font-size: .68rem; letter-spacing: .1em;
+    padding: .5rem 1rem; border-radius: 4px;
+    cursor: pointer; white-space: nowrap;
+    transition: border-color .2s, background .2s, color .2s;
+}
+.btn-cancel:hover {
+    border-color: rgba(255, 70, 70, .85);
+    background: rgba(255, 70, 70, .08);
+    color: #ff6464;
+}
+/* Light theme */
+body.theme-light .btn-cancel { border-color: rgba(200,0,0,.35); color: rgba(180,0,0,.75); }
+body.theme-light .btn-cancel:hover { border-color: rgba(200,0,0,.7); background: rgba(200,0,0,.06); color: #c00; }
+
 /* ── Ollama option checkbox ──────────────────────────────────── */
 .ollama-option {
     display: inline-flex; align-items: center; gap: .55rem;

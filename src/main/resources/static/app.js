@@ -5,6 +5,7 @@
 let currentUser        = null;   // populated after successful login / checkAuth
 let _ollamaAutoMinutes  = 2;      // -1=always off, 0=always on, N=auto if video>N min (default 2)
 let _whisperAutoMinutes = 10;     // threshold in min: <threshold → large-v3, ≥threshold → medium
+let _currentSse        = null;    // active SSE connection (null when idle)
 
 /* ── Check auth on load ─────────────────────────────────────── */
 async function checkAuth() {
@@ -1360,6 +1361,7 @@ function processVideo() {
         ollama: ollamaEnabled, whisperModel
     });
     const sse = new EventSource('/api/process/stream?' + params);
+    _currentSse = sse;
     let sseHandled = false;
 
     sse.addEventListener('progress', e => {
@@ -1369,6 +1371,7 @@ function processVideo() {
 
     sse.addEventListener('complete', e => {
         sseHandled = true;
+        _currentSse = null;
         sse.close();
         const barEl = document.getElementById('progBar');
         if (barEl) barEl.style.width = '100%';
@@ -1415,6 +1418,7 @@ function processVideo() {
 
     sse.addEventListener('apierror', e => {
         sseHandled = true;
+        _currentSse = null;
         sse.close();
         const data = JSON.parse(e.data);
         showError(data.error || t.errServer);
@@ -1428,6 +1432,7 @@ function processVideo() {
 
     sse.onerror = () => {
         if (sseHandled) return;
+        _currentSse = null;
         sse.close();
         console.error('[DualSub] SSE connection lost');
         showError(t.errServer);
@@ -1760,6 +1765,18 @@ function setLoading(on) {
     document.getElementById('btnProcess').disabled = on;
     document.getElementById('btnText').textContent = on ? t.btnLoading : t.btnAnalyze;
     document.getElementById('btnSpinner').classList.toggle('hidden', !on);
+    document.getElementById('btnCancel').classList.toggle('hidden', !on);
+}
+
+/** Cancels the running analysis: closes the SSE connection and resets the UI. */
+function cancelProcessing() {
+    if (_currentSse) {
+        _currentSse.close();
+        _currentSse = null;
+    }
+    setLoading(false);
+    hideProgress();
+    hideError();
 }
 
 function showError(msg) {

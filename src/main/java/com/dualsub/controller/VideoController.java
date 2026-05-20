@@ -20,6 +20,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -151,6 +152,12 @@ public class VideoController {
 
         SseEmitter emitter = new SseEmitter(300_000L); // 5-minute timeout
 
+        // Cancellation flag: set to true when the client closes the SSE connection.
+        final AtomicBoolean cancelled = new AtomicBoolean(false);
+        emitter.onCompletion(() -> cancelled.set(true));
+        emitter.onTimeout(()    -> cancelled.set(true));
+        emitter.onError(e       -> cancelled.set(true));
+
         // Resolve current user before entering the async thread (SecurityContext is thread-local)
         final User currentUser = (principal != null)
             ? userService.findByEmail(principal.getName()).orElse(null)
@@ -232,6 +239,9 @@ public class VideoController {
                     return;
                 }
 
+                // ── Cancellation check after transcript ───────────────────────────
+                if (cancelled.get()) { emitter.complete(); return; }
+
                 final boolean lang1Auto    = "auto".equals(lang1);
                 final String  finalDetCode = detectedCode;
                 final String  sourceCode   = finalDetCode != null ? finalDetCode : "auto";
@@ -262,6 +272,9 @@ public class VideoController {
                 } else {
                     originalEntries = original;
                 }
+
+                // ── Cancellation check before translations ────────────────────
+                if (cancelled.get()) { emitter.complete(); return; }
 
                 // ── Stages 4 & 5: translate both tracks in parallel ───────────
                 // Check translation caches before submitting tasks
@@ -316,6 +329,9 @@ public class VideoController {
                 final Long userId = (currentUser != null) ? currentUser.getId() : null;
                 executor.submit(() ->
                     persistenceService.recordWatch(videoId, effectiveLang1, lang2, userId));
+
+                // ── Cancellation check before Ollama refinement ──────────────
+                if (cancelled.get()) { emitter.complete(); return; }
 
                 // ── Ollama Step 2: refine GT translations ─────────────────────
                 List<SubtitleEntry> outSubs1 = subtitles1;
