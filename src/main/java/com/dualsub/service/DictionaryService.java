@@ -112,6 +112,16 @@ public class DictionaryService {
                 return wordRepo.save(w);
             });
 
+        // 1b. If the word already existed but its frequency rank was never computed
+        //     (saved before this feature was deployed), fill it in now.
+        if (dw.getFrequencyRank() == null) {
+            Integer rank = wordFreqService.lookupRank(normalizedWord, req.sourceLang);
+            if (rank != null) {
+                dw.setFrequencyRank(rank);
+                wordRepo.save(dw);
+            }
+        }
+
         // 2. Find or create the DictionaryEntry for this video
         Optional<DictionaryEntry> existing =
             entryRepo.findByUser_IdAndWord_IdAndVideoId(user.getId(), dw.getId(), req.videoId);

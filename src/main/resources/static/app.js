@@ -2263,6 +2263,10 @@ async function saveWordToDico() {
 /* ── DICO panel ──────────────────────────────────────────────── */
 
 function openDicoPanel() {
+    // Pause the video while the user browses the dictionary.
+    if (player && typeof player.pauseVideo === 'function') {
+        player.pauseVideo();
+    }
     document.getElementById('dicoPanel').classList.remove('hidden');
     loadDictionary();
 }
