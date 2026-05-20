@@ -2613,7 +2613,6 @@ async function saveDicoNotes(textarea) {
 }
 
 async function deleteDicoEntry(entryId, videoId) {
-    if (!confirm('Supprimer cette occurrence du mot ?')) return;
     try {
         const resp = await fetch(`/api/dictionary/entries/${entryId}`, { method: 'DELETE' });
         if (!resp.ok && resp.status !== 204) throw new Error('HTTP ' + resp.status);
