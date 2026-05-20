@@ -2446,6 +2446,26 @@ body.theme-light .dico-del-entry-btn, body.theme-light .dico-del-word-btn {
     border-color: rgba(204,34,0,.25); color: rgba(180,20,0,.7);
 }
 
+/* ── Dictionary 2-column grid on desktop ────────────────────── */
+@media (min-width: 641px) {
+    .dico-list {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        column-gap: 1.5rem;
+        align-items: start;
+    }
+    /* Empty-state message spans both columns */
+    .dico-empty { grid-column: span 2; }
+    /* Remove bottom border for items that land at the bottom of each column
+       (last item, and second-to-last when item count is odd → left-column floor) */
+    .dico-row:last-child,
+    .dico-row:nth-last-child(2):nth-child(odd) { border-bottom: none; }
+    /* Subtle column separator */
+    .dico-row:nth-child(odd)  { border-right: 1px solid rgba(255,255,255,.05); padding-right: .75rem; }
+    .dico-row:nth-child(even) { padding-left: .75rem; }
+}
+body.theme-light .dico-row:nth-child(odd) { border-right-color: rgba(0,0,0,.06); }
+
 /* ── Dictionary pagination bar ──────────────────────────────── */
 .dico-pagination {
     display: flex; align-items: center; justify-content: center; gap: .55rem;
