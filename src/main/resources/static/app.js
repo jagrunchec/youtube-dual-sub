@@ -2092,6 +2092,14 @@ function normWord(str) {
     return (str || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 }
 
+/** Length of the shared prefix between two strings — used for inflected-form matching. */
+function commonPrefixLen(a, b) {
+    const n = Math.min(a.length, b.length);
+    let i = 0;
+    while (i < n && a[i] === b[i]) i++;
+    return i;
+}
+
 async function highlightPeerWord(word, track, peerEl) {
     const sourceLang = track === 1 ? _activeLang1Code : _activeLang2Code;
     const targetLang = track === 1 ? _activeLang2Code : _activeLang1Code;
@@ -2106,9 +2114,11 @@ async function highlightPeerWord(word, track, peerEl) {
                 `/api/dictionary/translate?word=${encodeURIComponent(word)}&from=${sourceLang}&to=${targetLang}`);
             if (!r.ok) return;
             const data = await r.json();
-            // Take the first alternative (before first comma) and split into tokens
-            const primary = (data.translation || '').split(',')[0].trim();
-            transWords = primary.split(/\s+/).map(normWord).filter(w => w.length > 1);
+            // Use ALL alternatives returned by the bd section ("hommes, gens, personnes, ...").
+            // The first one is often a less common word than what the sentence translator chose.
+            const alts = (data.translation || '').split(',').map(s => s.trim()).filter(Boolean);
+            const tokens = alts.flatMap(a => a.split(/\s+/)).map(normWord).filter(w => w.length > 1);
+            transWords = [...new Set(tokens)];
             _peerHLCache.set(cacheKey, transWords);
         } catch (e) { return; }
     }
@@ -2117,8 +2127,10 @@ async function highlightPeerWord(word, track, peerEl) {
     clearPeerHL(peerEl);
 
     // For each translation token, find the best-matching .ws span in the peer track.
-    // We split each peer word on hyphens / apostrophes / typographic apostrophes so
-    // that compound forms like "venons-nous" or "d'où" can match a short pronoun.
+    // We split each peer word on hyphens / apostrophes so compound forms like
+    // "venons-nous" or "d'où" match short pronouns. We also match by a common
+    // prefix of ≥5 chars so inflected forms ("comprennent" vs dictionary
+    // "comprendre", "siècles" vs "siècle") still light up.
     peerEl.querySelectorAll('.ws').forEach(span => {
         const raw = normWord(span.dataset.word);
         if (!raw) return;
@@ -2127,7 +2139,7 @@ async function highlightPeerWord(word, track, peerEl) {
         const matched = candidates.some(sw =>
             transWords.some(tw =>
                 sw === tw ||
-                (sw.length > 3 && tw.length > 3 && (sw.startsWith(tw) || tw.startsWith(sw)))
+                (sw.length >= 4 && tw.length >= 4 && commonPrefixLen(sw, tw) >= 5)
             )
         );
         if (matched) span.classList.add('ws-peer-word-hl');
