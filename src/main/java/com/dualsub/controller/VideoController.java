@@ -215,9 +215,9 @@ public class VideoController {
                     return;
                 }
 
-                // ── Stages 4 & 5: translate both tracks in parallel ───────────
                 final boolean lang1Auto    = "auto".equals(lang1);
                 final String  finalDetCode = detectedCode;
+                final String  sourceCode   = finalDetCode != null ? finalDetCode : "auto";
 
                 final String lang1Label = lang1Auto
                     ? (detectedCode != null
@@ -226,15 +226,33 @@ public class VideoController {
                     : TranslationService.LANGUAGES.getOrDefault(lang1, lang1);
                 final String lang2Label = TranslationService.LANGUAGES.getOrDefault(lang2, lang2);
 
+                // ── Ollama Step 1: correct transcript BEFORE Google Translate ─
+                // Only for fresh fetches (cache hits are already processed).
+                final boolean ollamaActive = ollama && refinementService.isOllamaAvailable();
+                final List<SubtitleEntry> originalEntries;
+                if (ollamaActive && cachedResult.isEmpty()) {
+                    progress.accept("{\"step\":\"ollama_transcript\"}");
+                    List<SubtitleEntry> corrected = original;
+                    try {
+                        corrected = refinementService.getOllamaService()
+                            .correctTranscript(original, sourceCode);
+                        System.out.println("[Ollama] Transcript corrected: "
+                            + corrected.size() + " entries");
+                    } catch (Exception e) {
+                        System.err.println("[Ollama] Transcript correction failed: " + e.getMessage());
+                    }
+                    originalEntries = corrected;
+                } else {
+                    originalEntries = original;
+                }
+
+                // ── Stages 4 & 5: translate both tracks in parallel ───────────
                 // Check translation caches before submitting tasks
                 final Optional<List<SubtitleEntry>> translCached1 = lang1Auto
                     ? Optional.empty()
                     : persistenceService.getCachedTranslation(videoId, lang1);
                 final Optional<List<SubtitleEntry>> translCached2 =
                     persistenceService.getCachedTranslation(videoId, lang2);
-
-                // Make original effectively final for lambda capture
-                final List<SubtitleEntry> originalEntries = original;
 
                 // Submit both tasks: cache hit = immediate return, miss = Google Translate
                 Future<List<SubtitleEntry>> future1 = executor.submit(() -> {
@@ -266,7 +284,7 @@ public class VideoController {
                     + subtitles2.size() + " [" + lang2 + "]"
                     + (translCached2.isPresent() ? " (cached)" : ""));
 
-                // Persist new translations to cache (async, non-blocking)
+                // Persist GT translations to cache (async, non-blocking)
                 if (!lang1Auto && translCached1.isEmpty()) {
                     final List<SubtitleEntry> s1 = subtitles1;
                     executor.submit(() -> persistenceService.cacheTranslation(videoId, lang1, s1));
@@ -282,35 +300,20 @@ public class VideoController {
                 executor.submit(() ->
                     persistenceService.recordWatch(videoId, effectiveLang1, lang2, userId));
 
-                // ── Optional Ollama refinement (inline, synchronous) ──────────
-                String sourceCode = finalDetCode != null ? finalDetCode : "auto";
-                final List<SubtitleEntry> finalOriginal = originalEntries;
-                List<SubtitleEntry> outOriginal  = originalEntries;
-                List<SubtitleEntry> outSubs1     = subtitles1;
-                List<SubtitleEntry> outSubs2     = subtitles2;
+                // ── Ollama Step 2: refine GT translations ─────────────────────
+                List<SubtitleEntry> outSubs1 = subtitles1;
+                List<SubtitleEntry> outSubs2 = subtitles2;
 
-                if (ollama && refinementService.isOllamaAvailable()) {
-                    // Step A: correct transcript (only for fresh fetches, not cache hits)
-                    if (cachedResult.isEmpty()) {
-                        progress.accept("{\"step\":\"ollama_transcript\"}");
-                        try {
-                            outOriginal = refinementService.getOllamaService()
-                                .correctTranscript(finalOriginal, sourceCode);
-                        } catch (Exception e) {
-                            System.err.println("[Ollama] Transcript correction failed: " + e.getMessage());
-                            outOriginal = finalOriginal;
-                        }
-                    }
-
-                    // Step B: refine translations
+                if (ollamaActive) {
                     progress.accept("{\"step\":\"ollama_translation\"}");
                     try {
                         if (!lang1Auto) {
                             outSubs1 = refinementService.getOllamaService()
-                                .refine(outOriginal, subtitles1, sourceCode, lang1, null);
+                                .refine(originalEntries, subtitles1, sourceCode, lang1, null);
                         }
                         outSubs2 = refinementService.getOllamaService()
-                            .refine(outOriginal, subtitles2, sourceCode, lang2, null);
+                            .refine(originalEntries, subtitles2, sourceCode, lang2, null);
+                        System.out.println("[Ollama] Translations refined.");
                     } catch (Exception e) {
                         System.err.println("[Ollama] Translation refinement failed: " + e.getMessage());
                     }
