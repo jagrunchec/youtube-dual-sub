@@ -2193,10 +2193,11 @@ body.theme-light .ws.ws-active {
     margin-bottom: .5rem;
 }
 .dico-select {
-    background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.12);
+    background: #16162a; border: 1px solid rgba(255,255,255,.12);
     color: rgba(255,255,255,.75); font-family: 'Exo 2', sans-serif; font-size: .8rem;
     padding: .35rem .6rem; border-radius: 4px; cursor: pointer;
 }
+.dico-select option { background: #16162a; color: rgba(255,255,255,.85); }
 .dico-select:focus { outline: none; border-color: rgba(0,255,180,.4); }
 .dico-input {
     background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.12);
@@ -2510,9 +2511,10 @@ body.theme-light .dico-row:nth-child(odd) { border-right-color: rgba(0,0,0,.06);
 }
 .dico-pg-size {
     font-size: .7rem; padding: .25rem .3rem;
-    background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.13);
+    background: #16162a; border: 1px solid rgba(255,255,255,.13);
     color: rgba(255,255,255,.65); border-radius: 4px; cursor: pointer;
 }
+.dico-pg-size option { background: #16162a; color: rgba(255,255,255,.85); }
 
 /* ── Dictionary panel — responsive ─────────────────────────── */
 @media (max-width: 600px) {
