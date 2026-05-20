@@ -52,6 +52,12 @@ public class TranslationService {
         LANGUAGES.put("it", "Italiano");
         LANGUAGES.put("de", "Deutsch");
         LANGUAGES.put("pl", "Polski");
+        // Secondary-only languages: punctuation model doesn't cover them, so they
+        // can't be used as a source, but Google Translate targets them reliably.
+        LANGUAGES.put("pt", "Português");
+        LANGUAGES.put("nl", "Nederlands");
+        LANGUAGES.put("ru", "Русский");
+        LANGUAGES.put("hi", "हिन्दी");
     }
 
     public List<SubtitleEntry> translate(List<SubtitleEntry> entries, String targetLang)

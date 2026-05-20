@@ -720,6 +720,8 @@ function _dicoDefaultPageSize() { return window.innerWidth < 640 ? 3 : 12; }
 const LANG_LABELS = {
     fr: 'Français', en: 'English', es: 'Español',
     it: 'Italiano', de: 'Deutsch', pl: 'Polski',
+    // Secondary-only targets (no primary picker, no immersion support)
+    pt: 'Português', nl: 'Nederlands', ru: 'Русский', hi: 'हिन्दी',
 };
 
 /* ─── Internationalisation ───────────────────────────────────── */
