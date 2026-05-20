@@ -3068,7 +3068,18 @@ function _onSummaryEngineChange() {
         btn.title = unsupported
             ? 'Ollama ne supporte pas cette langue — basculez sur Gemini'
             : '';
+        // Reset content — the cache lookup below will repopulate if available
+        const textEl = document.getElementById('sumText' + track);
+        const metaEl = document.getElementById('sumMeta' + track);
+        const refBtn = document.getElementById('sumRefreshBtn' + track);
+        textEl.textContent = '';
+        textEl.classList.remove('loading');
+        metaEl.textContent = '';
+        btn.classList.remove('hidden');
+        refBtn.classList.add('hidden');
     });
+    // Re-query cache for the new engine (no-op if no video loaded yet)
+    if (_currentVideoId) _loadCachedSummaries();
 }
 
 /** Toggle the summary panel open/closed. */
@@ -3087,17 +3098,61 @@ function _resetSummaryPanel(videoId, lang1Code, lang2Code) {
     // Reset badges + content
     document.getElementById('sumLang1Badge').textContent = (lang1Code || 'XX').toUpperCase();
     document.getElementById('sumLang2Badge').textContent = (lang2Code || 'XX').toUpperCase();
-    document.getElementById('sumText1').textContent = '';
-    document.getElementById('sumText2').textContent = '';
-    document.getElementById('sumText1').classList.remove('loading');
-    document.getElementById('sumText2').classList.remove('loading');
-    document.getElementById('sumMeta1').textContent = '';
-    document.getElementById('sumMeta2').textContent = '';
-    document.getElementById('sumRefreshBtn1').classList.add('hidden');
-    document.getElementById('sumRefreshBtn2').classList.add('hidden');
-    document.getElementById('sumGenBtn1').disabled = false;
-    document.getElementById('sumGenBtn2').disabled = false;
+    [1, 2].forEach(track => {
+        document.getElementById('sumText'  + track).textContent = '';
+        document.getElementById('sumText'  + track).classList.remove('loading');
+        document.getElementById('sumMeta'  + track).textContent = '';
+        document.getElementById('sumGenBtn' + track).classList.remove('hidden');
+        document.getElementById('sumGenBtn' + track).disabled = false;
+        document.getElementById('sumRefreshBtn' + track).classList.add('hidden');
+    });
     _onSummaryEngineChange();
+    _loadCachedSummaries();
+}
+
+/**
+ * Fetches cached summaries for the current video/engine combination and displays
+ * them automatically. Called on video load and whenever the engine changes.
+ * If cached: show the summary + RÉGÉNÉRER button only.
+ * If not cached: keep the empty placeholder + GÉNÉRER button.
+ */
+async function _loadCachedSummaries() {
+    if (!_currentVideoId) return;
+    const engine = document.querySelector('input[name="summaryEngine"]:checked')?.value;
+    if (!engine) return;
+
+    [1, 2].forEach(async track => {
+        const lang = track === 1 ? _activeLang1Code : _activeLang2Code;
+        if (!lang) return;
+        try {
+            const url = `/api/summary/cached?videoId=${encodeURIComponent(_currentVideoId)}`
+                      + `&lang=${encodeURIComponent(lang)}&engine=${encodeURIComponent(engine)}`;
+            const resp = await fetch(url);
+            if (resp.status === 204) return;   // no cached entry — keep placeholder
+            if (!resp.ok) return;
+            const data = await resp.json();
+            _renderSummaryResult(track, data);
+        } catch (e) {
+            console.warn('[Summary] Cached lookup failed for track', track, e);
+        }
+    });
+}
+
+/** Populates one summary card from a backend payload and adjusts button visibility. */
+function _renderSummaryResult(track, data) {
+    const textEl = document.getElementById('sumText' + track);
+    const metaEl = document.getElementById('sumMeta' + track);
+    const genBtn = document.getElementById('sumGenBtn' + track);
+    const refBtn = document.getElementById('sumRefreshBtn' + track);
+
+    textEl.classList.remove('loading');
+    textEl.textContent = data.summary || '';
+    const cachedMark = data.cached ? ' · cache' : '';
+    const seconds    = data.durationMs ? ` · ${(data.durationMs/1000).toFixed(1)}s` : '';
+    metaEl.textContent = `ⓘ ${data.engine} / ${data.model}${seconds}${cachedMark}`;
+    // Loaded summary → hide GÉNÉRER, show only 🔄
+    genBtn.classList.add('hidden');
+    refBtn.classList.remove('hidden');
 }
 
 /**
@@ -3142,13 +3197,7 @@ function generateSummary(track, refresh = false) {
         _summarySse[i] = null;
         sse.close();
         const data = JSON.parse(e.data);
-        textEl.classList.remove('loading');
-        textEl.textContent = data.summary || '';
-        const cachedMark = data.cached ? ' · cache' : '';
-        const seconds    = data.durationMs ? ` · ${(data.durationMs/1000).toFixed(1)}s` : '';
-        metaEl.textContent = `ⓘ ${data.engine} / ${data.model}${seconds}${cachedMark}`;
-        genBtn.disabled = false;
-        refBtn.classList.remove('hidden');
+        _renderSummaryResult(track, data);
     });
 
     sse.addEventListener('apierror', e => {

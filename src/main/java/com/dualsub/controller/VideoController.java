@@ -208,19 +208,18 @@ public class VideoController {
                     System.out.println("[Stream] Transcript cache HIT: " + videoId
                         + " (" + original.size() + " entries)");
                 } else {
-                    // Cache MISS — run the full pipeline (emits punctuation + sentences internally)
+                    // Cache MISS — run the full pipeline (emits punctuation + sentences internally).
+                    // Cache write is DEFERRED until after Ollama transcript correction so the
+                    // persisted version is the improved one.
                     progress.accept("{\"step\":\"transcript\"}");
                     YouTubeTranscriptService.TranscriptResult transcript =
                         youTubeService.fetchTranscriptFull(videoId, progress);
                     original     = transcript.entries;
                     detectedCode = transcript.languageCode;
-
-                    if (!original.isEmpty()) {
-                        persistenceService.cacheTranscript(videoId, transcript);
-                    }
                 }
 
                 // ── Whisper fallback: if YouTube returned nothing AND Whisper was requested ──
+                // Cache write also deferred (handled after the Ollama transcript correction step).
                 if (original.isEmpty() && !"none".equals(whisperModel)) {
                     progress.accept("{\"step\":\"whisper\"}");
                     try {
@@ -228,9 +227,6 @@ public class VideoController {
                             youTubeService.fetchWithWhisper(videoId, whisperModel, progress);
                         original     = whisperResult.entries;
                         detectedCode = whisperResult.languageCode;
-                        if (!original.isEmpty()) {
-                            persistenceService.cacheTranscript(videoId, whisperResult);
-                        }
                     } catch (Exception e) {
                         System.err.println("[Whisper] Fallback failed: " + e.getMessage());
                     }
@@ -277,6 +273,16 @@ public class VideoController {
                     originalEntries = original;
                 }
 
+                // ── Persist the (possibly Ollama-corrected) transcript to cache ──
+                // Done here, NOT right after fetching, so the cached version is the
+                // best-quality one — subsequent views read the corrected transcript.
+                if (cachedResult.isEmpty() && !originalEntries.isEmpty()) {
+                    final List<SubtitleEntry> entriesToCache = originalEntries;
+                    final String langCodeToCache = detectedCode;
+                    executor.submit(() -> persistenceService.cacheTranscript(videoId,
+                        new YouTubeTranscriptService.TranscriptResult(langCodeToCache, entriesToCache)));
+                }
+
                 // ── Cancellation check before translations ────────────────────
                 if (cancelled.get()) { emitter.complete(); return; }
 
@@ -318,15 +324,8 @@ public class VideoController {
                     + subtitles2.size() + " [" + lang2 + "]"
                     + (translCached2.isPresent() ? " (cached)" : ""));
 
-                // Persist GT translations to cache (async, non-blocking)
-                if (!lang1Auto && translCached1.isEmpty()) {
-                    final List<SubtitleEntry> s1 = subtitles1;
-                    executor.submit(() -> persistenceService.cacheTranslation(videoId, lang1, s1));
-                }
-                if (translCached2.isEmpty()) {
-                    final List<SubtitleEntry> s2 = subtitles2;
-                    executor.submit(() -> persistenceService.cacheTranslation(videoId, lang2, s2));
-                }
+                // Translation cache write is DEFERRED until after Ollama refinement so the
+                // persisted versions are the improved ones. (Done at the end of the pipeline.)
 
                 // ── Record watch history (best-effort, non-blocking for SSE) ──
                 final String effectiveLang1 = lang1Auto ? "auto" : lang1;
@@ -365,6 +364,18 @@ public class VideoController {
                         System.out.println("[Ollama] Both targets unsupported (" + lang1 + ", " + lang2
                             + ") — skipping refinement entirely.");
                     }
+                }
+
+                // ── Persist the final (possibly Ollama-refined) translations to cache ──
+                // Cached versions reflect the best-available output, so subsequent
+                // playbacks of the same video skip both GT and Ollama entirely.
+                if (!lang1Auto && translCached1.isEmpty()) {
+                    final List<SubtitleEntry> finalS1 = outSubs1;
+                    executor.submit(() -> persistenceService.cacheTranslation(videoId, lang1, finalS1));
+                }
+                if (translCached2.isEmpty()) {
+                    final List<SubtitleEntry> finalS2 = outSubs2;
+                    executor.submit(() -> persistenceService.cacheTranslation(videoId, lang2, finalS2));
                 }
 
                 // ── Send complete event ───────────────────────────────────────

@@ -42,6 +42,20 @@ public class SummaryController {
     }
 
     /**
+     * Returns the cached summary for (videoId, lang, engine) without generating.
+     * 200 + payload if cached; 204 No Content otherwise.
+     * Used by the UI to auto-populate the panel on video load.
+     */
+    @GetMapping("/cached")
+    public ResponseEntity<?> cached(@RequestParam String videoId,
+                                    @RequestParam String lang,
+                                    @RequestParam String engine) {
+        return summaryService.getCached(videoId, lang, engine)
+            .<ResponseEntity<?>>map(s -> ResponseEntity.ok(buildPayload(s, true)))
+            .orElseGet(() -> ResponseEntity.noContent().build());
+    }
+
+    /**
      * Streams the summary generation for a single (videoId, lang) pair via SSE.
      *
      * Events:
