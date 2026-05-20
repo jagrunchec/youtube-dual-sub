@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Exo+2:wght@300;400;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css?v=44">
+    <link rel="stylesheet" href="style.css?v=45">
     <!-- Twemoji: flag emoji rendered as SVG images (Windows desktop doesn't support flag emoji natively) -->
     <script src="https://cdn.jsdelivr.net/npm/twemoji@14.0.2/dist/twemoji.min.js" crossorigin="anonymous"></script>
 </head>
@@ -267,11 +267,9 @@
             </label>
             <div class="whisper-picker" id="whisperPicker">
                 <span class="wp-label" id="whisperPickerLabel">WHISPER FALLBACK :</span>
-                <label class="wp-pill" title="Ne pas utiliser Whisper si YouTube n'a pas de sous-titres"><input type="radio" name="whisperModel" value="none"><span id="wpNone">Aucun</span></label>
                 <label class="wp-pill" title="Choisit automatiquement le modèle selon la durée"><input type="radio" name="whisperModel" value="auto" checked><span id="whisperAutoHint">Auto</span></label>
                 <label class="wp-pill" title="faster-whisper large-v3 (GPU local, haute qualité)"><input type="radio" name="whisperModel" value="large-v3"><span>large-v3</span></label>
                 <label class="wp-pill" title="faster-whisper medium (GPU local, plus rapide)"><input type="radio" name="whisperModel" value="medium"><span>medium</span></label>
-                <label class="wp-pill" title="OpenAI Whisper API (~$0.006/min, nécessite une clé API)"><input type="radio" name="whisperModel" value="openai"><span>OpenAI</span></label>
             </div>
             <div id="errorBox" class="error-box hidden"></div>
         </div>
@@ -666,6 +664,6 @@
 </div>
 
 <script src="https://www.youtube.com/iframe_api"></script>
-<script src="app.js?v=45"></script>
+<script src="app.js?v=46"></script>
 </body>
 </html>
