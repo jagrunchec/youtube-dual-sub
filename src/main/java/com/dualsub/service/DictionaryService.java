@@ -85,6 +85,7 @@ public class DictionaryService {
         public boolean alreadySaved;
         public Long    entryId;
         public Long    wordId;
+        public Integer frequencyRank;
     }
 
     // ── Public API ────────────────────────────────────────────────────────────
@@ -131,10 +132,11 @@ public class DictionaryService {
 
         if (existing.isPresent()) {
             DictionaryEntry entry = existing.get();
-            resp.translation  = entry.getTranslation();
-            resp.alreadySaved = true;
-            resp.entryId      = entry.getId();
-            resp.wordId       = dw.getId();
+            resp.translation   = entry.getTranslation();
+            resp.alreadySaved  = true;
+            resp.entryId       = entry.getId();
+            resp.wordId        = dw.getId();
+            resp.frequencyRank = dw.getFrequencyRank();
             return resp;
         }
 
@@ -155,10 +157,11 @@ public class DictionaryService {
         entry.setCreatedAt(LocalDateTime.now());
         entryRepo.save(entry);
 
-        resp.translation  = translation;
-        resp.alreadySaved = false;
-        resp.entryId      = entry.getId();
-        resp.wordId       = dw.getId();
+        resp.translation   = translation;
+        resp.alreadySaved  = false;
+        resp.entryId       = entry.getId();
+        resp.wordId        = dw.getId();
+        resp.frequencyRank = dw.getFrequencyRank();
         return resp;
     }
 

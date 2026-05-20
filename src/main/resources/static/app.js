@@ -989,10 +989,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     sub1.addEventListener('click',     e => { if (e.target.classList.contains('ws')) handleWordClick(e.target); });
     sub2.addEventListener('click',     e => { if (e.target.classList.contains('ws')) handleWordClick(e.target); });
 
-    // Hover → after 280 ms debounce, fetch translation and highlight matching span(s) in peer track
-    sub1.addEventListener('mouseover', e => { if (e.target.classList.contains('ws')) schedulePeerHL(e.target.dataset.word, 1, sub2); });
+    // Hover → after 280 ms debounce, show tooltip + highlight matching span(s) in peer track
+    sub1.addEventListener('mouseover', e => { if (e.target.classList.contains('ws')) schedulePeerHL(e.target.dataset.word, 1, sub2, e.target); });
     sub1.addEventListener('mouseout',  e => { if (e.target.classList.contains('ws')) cancelPeerHL(sub2); });
-    sub2.addEventListener('mouseover', e => { if (e.target.classList.contains('ws')) schedulePeerHL(e.target.dataset.word, 2, sub1); });
+    sub2.addEventListener('mouseover', e => { if (e.target.classList.contains('ws')) schedulePeerHL(e.target.dataset.word, 2, sub1, e.target); });
     sub2.addEventListener('mouseout',  e => { if (e.target.classList.contains('ws')) cancelPeerHL(sub1); });
 });
 
@@ -2071,16 +2071,40 @@ function wrapWords(text, track) {
 /* ── Peer-track word highlight ───────────────────────────────── */
 
 let   _peerHLTimer = null;
-const _peerHLCache = new Map();   // "word:from:to" → [normalised translation words]
+const _peerHLCache = new Map();   // "word:from:to" → { words: [...], raw: "..." }
 
-function schedulePeerHL(word, track, peerEl) {
+// ── Hover tooltip ────────────────────────────────────────────────────────────
+let _hoverTooltipEl = null;
+function _getHoverTooltip() {
+    if (!_hoverTooltipEl) {
+        _hoverTooltipEl = document.createElement('div');
+        _hoverTooltipEl.className = 'word-hover-tooltip';
+        document.body.appendChild(_hoverTooltipEl);
+    }
+    return _hoverTooltipEl;
+}
+function _showHoverTooltip(text, anchorEl) {
+    const tt = _getHoverTooltip();
+    tt.textContent = text;
+    tt.style.display = 'block';
+    const r = anchorEl.getBoundingClientRect();
+    tt.style.left = (r.left + r.width / 2) + 'px';
+    tt.style.top  = r.top + 'px';
+}
+function _hideHoverTooltip() {
+    if (_hoverTooltipEl) _hoverTooltipEl.style.display = 'none';
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
+function schedulePeerHL(word, track, peerEl, sourceEl) {
     clearTimeout(_peerHLTimer);
-    _peerHLTimer = setTimeout(() => highlightPeerWord(word, track, peerEl), 280);
+    _peerHLTimer = setTimeout(() => highlightPeerWord(word, track, peerEl, sourceEl), 280);
 }
 
 function cancelPeerHL(peerEl) {
     clearTimeout(_peerHLTimer);
     clearPeerHL(peerEl);
+    _hideHoverTooltip();
 }
 
 function clearPeerHL(peerEl) {
@@ -2100,30 +2124,33 @@ function commonPrefixLen(a, b) {
     return i;
 }
 
-async function highlightPeerWord(word, track, peerEl) {
+async function highlightPeerWord(word, track, peerEl, sourceEl) {
     const sourceLang = track === 1 ? _activeLang1Code : _activeLang2Code;
     const targetLang = track === 1 ? _activeLang2Code : _activeLang1Code;
     if (!sourceLang || !targetLang || sourceLang === 'auto' || targetLang === 'auto') return;
 
     const cacheKey = `${word}:${sourceLang}:${targetLang}`;
-    let transWords = _peerHLCache.get(cacheKey);
+    let cached = _peerHLCache.get(cacheKey);
 
-    if (!transWords) {
+    if (!cached) {
         try {
             const r = await fetch(
                 `/api/dictionary/translate?word=${encodeURIComponent(word)}&from=${sourceLang}&to=${targetLang}`);
             if (!r.ok) return;
             const data = await r.json();
+            const raw = (data.translation || '').trim();
             // Use ALL alternatives returned by the bd section ("hommes, gens, personnes, ...").
-            // The first one is often a less common word than what the sentence translator chose.
-            const alts = (data.translation || '').split(',').map(s => s.trim()).filter(Boolean);
+            const alts = raw.split(',').map(s => s.trim()).filter(Boolean);
             const tokens = alts.flatMap(a => a.split(/\s+/)).map(normWord).filter(w => w.length > 1);
-            transWords = [...new Set(tokens)];
-            _peerHLCache.set(cacheKey, transWords);
+            cached = { words: [...new Set(tokens)], raw };
+            _peerHLCache.set(cacheKey, cached);
         } catch (e) { return; }
     }
 
-    if (!transWords.length) return;
+    // Show translation tooltip near the hovered word
+    if (cached.raw && sourceEl) _showHoverTooltip(cached.raw, sourceEl);
+
+    if (!cached.words.length) return;
     clearPeerHL(peerEl);
 
     // For each translation token, find the best-matching .ws span in the peer track.
@@ -2137,7 +2164,7 @@ async function highlightPeerWord(word, track, peerEl) {
         const subTokens = raw.split(/[-'’]/).filter(Boolean);
         const candidates = [raw, ...subTokens];
         const matched = candidates.some(sw =>
-            transWords.some(tw =>
+            cached.words.some(tw =>
                 sw === tw ||
                 (sw.length >= 4 && tw.length >= 4 && commonPrefixLen(sw, tw) >= 5)
             )
@@ -2172,6 +2199,8 @@ function handleWordClick(el) {
     document.getElementById('wbSaveBtn').classList.remove('hidden');
     document.getElementById('wbSaveBtn').disabled = true;
     document.getElementById('wbSaved').classList.add('hidden');
+    const _wbFreqEl = document.getElementById('wbFreq');
+    if (_wbFreqEl) _wbFreqEl.classList.add('hidden');
     bar.classList.remove('hidden');
 
     // Fetch translation (non-destructive — does not save to dictionary)
@@ -2254,6 +2283,17 @@ async function saveWordToDico() {
         _wbSaved   = true;
         saveBtn.classList.add('hidden');
         savedMsg.classList.remove('hidden');
+        // Show frequency rank if available
+        const freqEl = document.getElementById('wbFreq');
+        if (freqEl) {
+            if (data.frequencyRank) {
+                freqEl.textContent = `top ${data.frequencyRank.toLocaleString()}`;
+                freqEl.title = `Rang de fréquence dans la langue (sur 100 000 mots)`;
+                freqEl.classList.remove('hidden');
+            } else {
+                freqEl.classList.add('hidden');
+            }
+        }
     } catch (e) {
         console.error('[Dictionary] Save error:', e);
         saveBtn.disabled = false;
@@ -2374,7 +2414,7 @@ function renderDictionary(items) {
 
         // Frequency rank hint
         const freqHtml = item.frequencyRank
-            ? `<span class="dico-freq" title="Rang de fréquence dans la langue">#${item.frequencyRank}</span>`
+            ? `<span class="dico-freq" title="Rang de fréquence dans la langue (sur 100 000 mots)">top ${item.frequencyRank.toLocaleString()}</span>`
             : '';
 
         // Video link

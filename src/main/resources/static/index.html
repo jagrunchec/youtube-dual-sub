@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Exo+2:wght@300;400;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css?v=28">
+    <link rel="stylesheet" href="style.css?v=29">
     <!-- Twemoji: flag emoji rendered as SVG images (Windows desktop doesn't support flag emoji natively) -->
     <script src="https://cdn.jsdelivr.net/npm/twemoji@14.0.2/dist/twemoji.min.js" crossorigin="anonymous"></script>
 </head>
@@ -327,6 +327,7 @@
                     <button class="wb-save-btn hidden" id="wbSaveBtn" onclick="saveWordToDico()">📚 SAUVEGARDER</button>
                     <span class="wb-saved hidden" id="wbSaved"
                           onclick="openDicoPanel()" title="Ouvrir le dictionnaire">✓ DANS LE DICO &nbsp;↗</span>
+                    <span class="wb-freq hidden" id="wbFreq"></span>
                     <button class="wb-close-btn" onclick="closeWordBar()">✕</button>
                 </div>
             </div>
@@ -585,6 +586,6 @@
 </div>
 
 <script src="https://www.youtube.com/iframe_api"></script>
-<script src="app.js?v=30"></script>
+<script src="app.js?v=31"></script>
 </body>
 </html>

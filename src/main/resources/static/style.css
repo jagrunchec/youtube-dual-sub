@@ -2083,6 +2083,36 @@ body.theme-light .ws.ws-peer-word-hl {
 }
 .wb-close-btn:hover { color: rgba(255,255,255,.7); }
 
+.wb-freq {
+    font-size: .6rem; font-family: 'Exo 2', sans-serif;
+    color: rgba(180,220,255,.8); letter-spacing: .04em;
+    background: rgba(100,160,255,.12); border: 1px solid rgba(100,160,255,.25);
+    border-radius: 3px; padding: .05rem .35rem;
+    pointer-events: none;
+}
+
+/* ── Hover translation tooltip ───────────────────────────────────────────── */
+.word-hover-tooltip {
+    display: none;
+    position: fixed;
+    background: rgba(5, 12, 30, 0.96);
+    color: #00ffb4;
+    border: 1px solid rgba(0,255,180,.35);
+    border-radius: 5px;
+    padding: .22rem .65rem;
+    font-size: .73rem;
+    font-family: 'Exo 2', sans-serif;
+    letter-spacing: .02em;
+    pointer-events: none;
+    z-index: 9999;
+    transform: translateX(-50%) translateY(calc(-100% - 8px));
+    white-space: nowrap;
+    max-width: 300px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    box-shadow: 0 3px 14px rgba(0,0,0,.6);
+}
+
 /* light theme */
 body.theme-light .word-bar {
     background: rgba(240,244,255,.98);
