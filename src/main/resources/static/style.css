@@ -2241,6 +2241,51 @@ body.theme-light .ws.ws-active {
     background: rgba(255,180,60,.1); border-color: rgba(255,180,60,.25); color: rgba(255,200,80,.7);
 }
 
+/* Tag pills */
+.dico-tags {
+    display: flex; flex-wrap: wrap; gap: .3rem; margin-top: .3rem; align-items: center;
+}
+.dico-tag-pill {
+    display: inline-flex; align-items: center; gap: .2rem;
+    font-size: .6rem; font-family: 'Orbitron', sans-serif; letter-spacing: .05em;
+    padding: .15rem .45rem; border-radius: 20px;
+    background: rgba(100,160,255,.12); border: 1px solid rgba(100,160,255,.25);
+    color: rgba(140,190,255,.85); cursor: default;
+    transition: background .15s;
+}
+.dico-tag-pill:hover { background: rgba(100,160,255,.2); }
+.dico-tag-remove {
+    font-style: normal; font-size: .65rem; cursor: pointer;
+    color: rgba(140,190,255,.5); line-height: 1;
+    padding: 0 .1rem; margin-left: .1rem;
+}
+.dico-tag-remove:hover { color: rgba(255,100,100,.8); }
+.dico-tag-add {
+    display: inline-flex; align-items: center;
+    font-size: .65rem; padding: .12rem .35rem; border-radius: 20px;
+    background: none; border: 1px dashed rgba(255,255,255,.15);
+    color: rgba(255,255,255,.3); cursor: pointer;
+    transition: border-color .15s, color .15s;
+}
+.dico-tag-add:hover { border-color: rgba(100,160,255,.4); color: rgba(140,190,255,.7); }
+.dico-tag-input {
+    font-size: .68rem; font-family: 'Exo 2', sans-serif;
+    padding: .15rem .4rem; border-radius: 20px;
+    background: rgba(255,255,255,.06); border: 1px solid rgba(100,160,255,.35);
+    color: #c8dcff; outline: none; width: 90px;
+}
+.dico-tag-input::placeholder { color: rgba(255,255,255,.25); }
+
+/* Light theme overrides for tags */
+body.theme-light .dico-tag-pill {
+    background: rgba(0,85,200,.08); border-color: rgba(0,85,200,.2); color: #1a55c0;
+}
+body.theme-light .dico-tag-remove { color: rgba(0,85,200,.4); }
+body.theme-light .dico-tag-remove:hover { color: rgba(200,0,0,.7); }
+body.theme-light .dico-tag-add { border-color: rgba(0,0,0,.15); color: rgba(0,0,0,.35); }
+body.theme-light .dico-tag-add:hover { border-color: rgba(0,85,200,.3); color: #1a55c0; }
+body.theme-light .dico-tag-input { background: rgba(0,0,0,.04); border-color: rgba(0,85,200,.3); color: #1a3d8f; }
+
 /* Notes cell */
 .dico-notes-cell { min-width: 160px; }
 .dico-notes-area {

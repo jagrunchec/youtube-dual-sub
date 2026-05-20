@@ -120,3 +120,31 @@ databaseChangeLog:
             tableName: dictionary_entries
             columnNames: user_id, word_id, video_id
             constraintName: uq_de_user_word_video
+
+  # ── dictionary_word_tags ──────────────────────────────────────────────────────
+  # User-defined tags on a word (max 5 soft limit enforced in service).
+  # Stored as plain strings — no separate tag entity.
+  - changeSet:
+      id: 013-dictionary-word-tags
+      author: dualsub
+      changes:
+        - createTable:
+            tableName: dictionary_word_tags
+            columns:
+              - column:
+                  name: word_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_dwt_word
+                    references: dictionary_words(id)
+                    deleteCascade: true
+              - column:
+                  name: tag
+                  type: VARCHAR(50)
+                  constraints:
+                    nullable: false
+        - addUniqueConstraint:
+            tableName: dictionary_word_tags
+            columnNames: word_id, tag
+            constraintName: uq_dwt_word_tag

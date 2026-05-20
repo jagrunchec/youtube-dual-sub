@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Exo+2:wght@300;400;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css?v=25">
+    <link rel="stylesheet" href="style.css?v=26">
     <!-- Twemoji: flag emoji rendered as SVG images (Windows desktop doesn't support flag emoji natively) -->
     <script src="https://cdn.jsdelivr.net/npm/twemoji@14.0.2/dist/twemoji.min.js" crossorigin="anonymous"></script>
 </head>
@@ -427,6 +427,9 @@
             <select class="dico-select" id="dicoLangFilter" onchange="loadDictionary()">
                 <option value="">🌐 Toutes les langues</option>
             </select>
+            <select class="dico-select" id="dicoTagFilter" onchange="loadDictionary()">
+                <option value="">🏷 Tous les tags</option>
+            </select>
         </div>
         <div class="dico-actions-row">
             <span class="dico-count" id="dicoCount"></span>
@@ -581,6 +584,6 @@
 </div>
 
 <script src="https://www.youtube.com/iframe_api"></script>
-<script src="app.js?v=27"></script>
+<script src="app.js?v=28"></script>
 </body>
 </html>

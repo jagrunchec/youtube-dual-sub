@@ -41,6 +41,18 @@ public class DictionaryWord {
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 
+    /**
+     * User-defined tags for this word (e.g. "grammaire", "histoire").
+     * Backed by the dictionary_word_tags join table.
+     * Max 5 enforced in the service layer, not in DB.
+     */
+    @ElementCollection(fetch = FetchType.LAZY)
+    @CollectionTable(name = "dictionary_word_tags",
+                     joinColumns = @JoinColumn(name = "word_id"))
+    @Column(name = "tag", length = 50)
+    @com.fasterxml.jackson.annotation.JsonIgnore
+    private List<String> tags = new ArrayList<>();
+
     @OneToMany(mappedBy = "word", cascade = CascadeType.ALL, orphanRemoval = true)
     @com.fasterxml.jackson.annotation.JsonIgnore
     private List<DictionaryEntry> entries = new ArrayList<>();
@@ -65,6 +77,9 @@ public class DictionaryWord {
     public LocalDateTime getCreatedAt()          { return createdAt; }
     public void setCreatedAt(LocalDateTime v)    { this.createdAt = v; }
 
-    public List<DictionaryEntry> getEntries()    { return entries; }
-    public void setEntries(List<DictionaryEntry> e) { this.entries = e; }
+    public List<String> getTags()                     { return tags; }
+    public void setTags(List<String> tags)            { this.tags = tags; }
+
+    public List<DictionaryEntry> getEntries()         { return entries; }
+    public void setEntries(List<DictionaryEntry> e)   { this.entries = e; }
 }

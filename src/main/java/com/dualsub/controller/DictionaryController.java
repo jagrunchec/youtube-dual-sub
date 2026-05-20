@@ -77,6 +77,7 @@ public class DictionaryController {
      * @param videoId filter to a specific video
      * @param from    filter entries created on or after this ISO date (yyyy-MM-dd)
      * @param lang    filter to a source language code
+     * @param tag     filter to entries whose word has this tag
      */
     @GetMapping
     public ResponseEntity<List<DictionaryItemDto>> list(
@@ -84,6 +85,7 @@ public class DictionaryController {
             @RequestParam(required = false) String videoId,
             @RequestParam(required = false) String from,
             @RequestParam(required = false) String lang,
+            @RequestParam(required = false) String tag,
             Principal principal) {
 
         if (principal == null) return ResponseEntity.ok(List.of());
@@ -95,8 +97,28 @@ public class DictionaryController {
         }
 
         List<DictionaryItemDto> items =
-            dictionaryService.list(user.getId(), sort, videoId, fromDate, lang);
+            dictionaryService.list(user.getId(), sort, videoId, fromDate, lang, tag);
         return ResponseEntity.ok(items);
+    }
+
+    // ── Tags ──────────────────────────────────────────────────────────────────
+
+    @PatchMapping("/words/{wordId}/tags")
+    public ResponseEntity<?> updateTags(@PathVariable Long wordId,
+                                        @RequestBody Map<String, Object> body,
+                                        Principal principal) {
+        if (principal == null) return ResponseEntity.status(401).build();
+        try {
+            User user = userService.getByEmail(principal.getName());
+            @SuppressWarnings("unchecked")
+            List<String> tags = (List<String>) body.get("tags");
+            dictionaryService.updateTags(user.getId(), wordId, tags);
+            return ResponseEntity.ok().build();
+        } catch (SecurityException e) {
+            return ResponseEntity.status(403).body(Map.of("error", e.getMessage()));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
     }
 
     // ── Notes ─────────────────────────────────────────────────────────────────

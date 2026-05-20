@@ -2281,10 +2281,13 @@ async function loadDictionary() {
     const dateF   = document.getElementById('dicoDateFrom').value;
     const langF   = document.getElementById('dicoLangFilter').value;
 
+    const tagF   = document.getElementById('dicoTagFilter').value;
+
     const params = new URLSearchParams({ sort });
     if (videoF) params.set('videoId', videoF);
     if (dateF)  params.set('from', dateF);
     if (langF)  params.set('lang', langF);
+    if (tagF)   params.set('tag', tagF);
 
     // Show "bulk by video" button when filtering by a specific video
     const bulkVideo = document.getElementById('dicoBulkVideo');
@@ -2295,8 +2298,8 @@ async function loadDictionary() {
         if (!resp.ok) throw new Error('HTTP ' + resp.status);
         const items = await resp.json();
         renderDictionary(items);
-        // Populate language filter options from results
         populateDicoLangFilter(items);
+        populateDicoTagFilter(items);
     } catch (e) {
         console.error('[Dictionary] Load error:', e, e && e.stack);
         document.getElementById('dicoList').innerHTML =
@@ -2316,6 +2319,23 @@ function populateDicoLangFilter(items) {
         opt.value = code;
         opt.textContent = name;
         if (code === cur) opt.selected = true;
+        sel.appendChild(opt);
+    });
+}
+
+function populateDicoTagFilter(items) {
+    const sel = document.getElementById('dicoTagFilter');
+    const cur = sel.value;
+    // Collect all tags across all items
+    const tags = [...new Set(
+        items.flatMap(i => (i.tags || []))
+    )].sort();
+    sel.innerHTML = '<option value="">🏷 Tous les tags</option>';
+    tags.forEach(tag => {
+        const opt = document.createElement('option');
+        opt.value = tag;
+        opt.textContent = tag;
+        if (tag === cur) opt.selected = true;
         sel.appendChild(opt);
     });
 }
@@ -2374,12 +2394,23 @@ function renderDictionary(items) {
                     : ''}
             </div>` : '';
 
+        // Tag pills (rendered from item.tags; add-tag UI appended after render)
+        const tagPillsHtml = (item.tags || []).map(t =>
+            `<span class="dico-tag-pill" data-tag="${esc(t)}">${esc(t)
+            }<i class="dico-tag-remove" title="Retirer ce tag" onclick="removeTag(${item.wordId},'${esc(t)}',this)">×</i></span>`
+        ).join('');
+
         row.innerHTML = `
             <div class="dico-word-cell">
                 <span class="dico-word">${esc(item.word)}</span>
                 <div class="dico-word-meta">
                     <span class="dico-lang-badge">${(item.sourceLanguage || '').toUpperCase()}</span>
                     ${freqHtml}
+                </div>
+                <div class="dico-tags" data-word-id="${item.wordId}">
+                    ${tagPillsHtml}
+                    <button class="dico-tag-add" title="Ajouter un tag"
+                        onclick="showTagInput(this, ${item.wordId})">＋ tag</button>
                 </div>
                 <span class="dico-date">${dateStr}</span>
                 ${videoHtml}
@@ -2502,4 +2533,130 @@ function jumpToVideo(videoId) {
     } else {
         resetApp();
     }
+}
+
+/* ── Dictionary tag management ───────────────────────────────── */
+
+/**
+ * Show an inline text input next to the "+ tag" button.
+ * Pressing Enter or losing focus commits the tag.
+ */
+function showTagInput(btn, wordId) {
+    // Prevent opening a second input if one is already open
+    const container = btn.closest('.dico-tags');
+    if (container.querySelector('.dico-tag-input')) return;
+
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.className = 'dico-tag-input';
+    input.maxLength = 50;
+    input.placeholder = 'Nouveau tag…';
+    btn.replaceWith(input);
+    input.focus();
+
+    const commit = () => {
+        const val = input.value.trim().toLowerCase();
+        if (val) addTag(wordId, val, input);
+        else restoreAddButton(input, wordId);
+    };
+    input.addEventListener('keydown', e => {
+        if (e.key === 'Enter') { e.preventDefault(); commit(); }
+        if (e.key === 'Escape') restoreAddButton(input, wordId);
+    });
+    input.addEventListener('blur', commit);
+}
+
+function restoreAddButton(input, wordId) {
+    const btn = document.createElement('button');
+    btn.className = 'dico-tag-add';
+    btn.title = 'Ajouter un tag';
+    btn.textContent = '＋ tag';
+    btn.onclick = () => showTagInput(btn, wordId);
+    input.replaceWith(btn);
+}
+
+async function addTag(wordId, tag, inputEl) {
+    // Collect current tags from the DOM for this word
+    const container = inputEl.closest('.dico-tags');
+    const currentTags = [...container.querySelectorAll('.dico-tag-pill')]
+        .map(p => p.dataset.tag);
+
+    if (currentTags.includes(tag)) { restoreAddButton(inputEl, wordId); return; }
+    if (currentTags.length >= 5) {
+        alert('Maximum 5 tags par mot.');
+        restoreAddButton(inputEl, wordId);
+        return;
+    }
+
+    const newTags = [...currentTags, tag];
+    const ok = await patchTags(wordId, newTags);
+    if (ok) {
+        // Insert pill before the add-button slot
+        const pill = document.createElement('span');
+        pill.className = 'dico-tag-pill';
+        pill.dataset.tag = tag;
+        pill.innerHTML = `${esc(tag)}<i class="dico-tag-remove" title="Retirer ce tag"
+            onclick="removeTag(${wordId},'${esc(tag)}',this)">×</i>`;
+        restoreAddButton(inputEl, wordId);
+        container.insertBefore(pill, container.querySelector('.dico-tag-add'));
+        populateDicoTagFilter(/* re-fetch not needed */null);
+    } else {
+        restoreAddButton(inputEl, wordId);
+    }
+}
+
+async function removeTag(wordId, tag, iconEl) {
+    const container = iconEl.closest('.dico-tags');
+    const currentTags = [...container.querySelectorAll('.dico-tag-pill')]
+        .map(p => p.dataset.tag)
+        .filter(t => t !== tag);
+
+    const ok = await patchTags(wordId, currentTags);
+    if (ok) {
+        iconEl.closest('.dico-tag-pill').remove();
+        // Update the tag filter dropdown if the removed tag was the last one
+        const allPills = document.querySelectorAll(`.dico-tag-pill[data-tag="${CSS.escape(tag)}"]`);
+        if (!allPills.length) {
+            // Remove the option from the select
+            const sel = document.getElementById('dicoTagFilter');
+            const opt = [...sel.options].find(o => o.value === tag);
+            if (opt) opt.remove();
+        }
+    }
+}
+
+async function patchTags(wordId, tags) {
+    try {
+        const r = await fetch(`/api/dictionary/words/${wordId}/tags`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ tags })
+        });
+        return r.ok;
+    } catch (e) {
+        console.error('[Tags] patch failed', e);
+        return false;
+    }
+}
+
+// Rebuild tag filter from current items when called with null (DOM-only update)
+const _origPopulateDicoTagFilter = populateDicoTagFilter;
+function populateDicoTagFilter(items) {
+    if (items === null) {
+        // Collect tags from current DOM pills
+        const tags = [...new Set(
+            [...document.querySelectorAll('.dico-tag-pill')].map(p => p.dataset.tag)
+        )].sort();
+        const sel = document.getElementById('dicoTagFilter');
+        const cur = sel.value;
+        sel.innerHTML = '<option value="">🏷 Tous les tags</option>';
+        tags.forEach(tag => {
+            const opt = document.createElement('option');
+            opt.value = tag; opt.textContent = tag;
+            if (tag === cur) opt.selected = true;
+            sel.appendChild(opt);
+        });
+        return;
+    }
+    _origPopulateDicoTagFilter(items);
 }

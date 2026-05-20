@@ -50,20 +50,21 @@ public class DictionaryService {
 
     /** Flat view returned to the frontend for the DICO panel. */
     public static class DictionaryItemDto {
-        public Long   entryId;
-        public Long   wordId;
-        public String word;
-        public String sourceLanguage;
-        public Integer frequencyRank;
-        public String translation;
-        public String targetLanguage;
-        public String videoId;
-        public String videoTitle;
-        public String sourceSentence;
-        public String translatedSentence;
-        public Long   videoTimingMs;
-        public String notes;
-        public String createdAt;   // ISO-8601
+        public Long         entryId;
+        public Long         wordId;
+        public String       word;
+        public String       sourceLanguage;
+        public Integer      frequencyRank;
+        public java.util.List<String> tags;
+        public String       translation;
+        public String       targetLanguage;
+        public String       videoId;
+        public String       videoTitle;
+        public String       sourceSentence;
+        public String       translatedSentence;
+        public Long         videoTimingMs;
+        public String       notes;
+        public String       createdAt;   // ISO-8601
     }
 
     /** Request body for the lookup endpoint. */
@@ -168,13 +169,17 @@ public class DictionaryService {
      * @param videoId  filter to a specific video (null = all)
      * @param from     filter to entries created on or after this date (null = all)
      * @param lang     filter to a specific source language (null = all)
+     * @param tag      filter to entries whose word has this tag (null = all)
      */
     @Transactional(readOnly = true)
     public List<DictionaryItemDto> list(Long userId, String sort,
-                                        String videoId, LocalDate from, String lang) {
+                                        String videoId, LocalDate from,
+                                        String lang, String tag) {
         List<DictionaryEntry> entries;
 
-        if (videoId != null && !videoId.isBlank()) {
+        if (tag != null && !tag.isBlank()) {
+            entries = entryRepo.findByUserIdAndTag(userId, tag);
+        } else if (videoId != null && !videoId.isBlank()) {
             entries = entryRepo.findByUser_IdAndVideoIdOrderByCreatedAtDesc(userId, videoId);
         } else if (from != null) {
             entries = entryRepo.findByUser_IdAndCreatedAtGreaterThanEqualOrderByCreatedAtDesc(
@@ -213,6 +218,29 @@ public class DictionaryService {
         }
         entry.setNotes(notes);
         entryRepo.save(entry);
+    }
+
+    /**
+     * Replace the tag list on a word.
+     * Tags are normalised (trimmed, lowercased) and capped at 5.
+     */
+    @Transactional
+    public void updateTags(Long userId, Long wordId, List<String> rawTags) {
+        DictionaryWord word = wordRepo.findById(wordId)
+            .orElseThrow(() -> new IllegalArgumentException("Word not found: " + wordId));
+        if (!word.getUser().getId().equals(userId)) {
+            throw new SecurityException("Not your word");
+        }
+        List<String> source = rawTags != null ? rawTags : new ArrayList<>();
+        List<String> normalised = source.stream()
+            .map(t -> t.trim().toLowerCase(Locale.ROOT))
+            .filter(t -> !t.isBlank())
+            .distinct()
+            .limit(5)
+            .collect(Collectors.toList());
+        word.getTags().clear();
+        word.getTags().addAll(normalised);
+        wordRepo.save(word);
     }
 
     /** Delete a single entry (keeps the word if it has entries in other videos). */
@@ -293,6 +321,7 @@ public class DictionaryService {
         d.translatedSentence = e.getTranslatedSentence();
         d.videoTimingMs      = e.getVideoTimingMs();
         d.notes              = e.getNotes();
+        d.tags               = new ArrayList<>(e.getWord().getTags());
         d.createdAt          = e.getCreatedAt().toString();
         return d;
     }

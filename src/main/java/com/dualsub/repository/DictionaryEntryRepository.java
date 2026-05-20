@@ -29,6 +29,12 @@ public interface DictionaryEntryRepository extends JpaRepository<DictionaryEntry
     /** Entries for a specific word (all videos). */
     List<DictionaryEntry> findByWord_IdAndUser_Id(Long wordId, Long userId);
 
+    /** Entries whose word carries a given tag. */
+    @Query("SELECT e FROM DictionaryEntry e WHERE e.user.id = :userId " +
+           "AND :tag MEMBER OF e.word.tags ORDER BY e.createdAt DESC")
+    List<DictionaryEntry> findByUserIdAndTag(@Param("userId") Long userId,
+                                             @Param("tag") String tag);
+
     @Modifying
     @Query("DELETE FROM DictionaryEntry de WHERE de.user.id = :userId AND de.videoId = :videoId")
     void deleteByUserIdAndVideoId(@Param("userId") Long userId, @Param("videoId") String videoId);
