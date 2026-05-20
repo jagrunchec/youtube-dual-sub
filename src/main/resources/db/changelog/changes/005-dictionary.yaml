@@ -121,6 +121,16 @@ databaseChangeLog:
             columnNames: user_id, word_id, video_id
             constraintName: uq_de_user_word_video
 
+  # ── drop (user_id, word_id, video_id) uniqueness on entries ─────────────────
+  # A word can now be saved multiple times in the same video (different sentences).
+  - changeSet:
+      id: 014-drop-entry-unique-constraint
+      author: dualsub
+      changes:
+        - dropUniqueConstraint:
+            tableName: dictionary_entries
+            constraintName: uq_de_user_word_video
+
   # ── dictionary_word_tags ──────────────────────────────────────────────────────
   # User-defined tags on a word (max 5 soft limit enforced in service).
   # Stored as plain strings — no separate tag entity.

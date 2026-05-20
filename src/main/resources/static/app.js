@@ -2287,6 +2287,7 @@ async function saveWordToDico() {
             if (data.frequencyRank) {
                 freqEl.textContent = `top ${data.frequencyRank.toLocaleString()}`;
                 freqEl.title = `Rang de fréquence dans la langue (sur 100 000 mots)`;
+                freqEl.className = `wb-freq ${freqClass(data.frequencyRank)}`;
                 freqEl.classList.remove('hidden');
             } else {
                 freqEl.classList.add('hidden');
@@ -2380,6 +2381,23 @@ function populateDicoTagFilter(items) {
     });
 }
 
+/**
+ * Returns a CSS class name for the frequency rank colour tier.
+ * top 1000  = red  |  top 2000  = orange  |  top 3000  = yellow
+ * top 5000  = green|  top 8000  = blue    |  top 12000 = purple
+ * beyond    = muted
+ */
+function freqClass(rank) {
+    if (!rank) return '';
+    if (rank <= 1000)  return 'freq-red';
+    if (rank <= 2000)  return 'freq-orange';
+    if (rank <= 3000)  return 'freq-yellow';
+    if (rank <= 5000)  return 'freq-green';
+    if (rank <= 8000)  return 'freq-blue';
+    if (rank <= 12000) return 'freq-purple';
+    return 'freq-muted';
+}
+
 function renderDictionary(items) {
     const list  = document.getElementById('dicoList');
     const empty = document.getElementById('dicoEmpty');
@@ -2410,9 +2428,10 @@ function renderDictionary(items) {
             dateStr = d.toLocaleDateString(undefined, { day: '2-digit', month: '2-digit', year: '2-digit' });
         }
 
-        // Frequency rank hint
+        // Frequency rank hint — colour-coded by tier
         const freqHtml = item.frequencyRank
-            ? `<span class="dico-freq" title="Rang de fréquence dans la langue (sur 100 000 mots)">top ${item.frequencyRank.toLocaleString()}</span>`
+            ? `<span class="dico-freq ${freqClass(item.frequencyRank)}"
+                   title="Rang de fréquence dans la langue (sur 100 000 mots)">top ${item.frequencyRank.toLocaleString()}</span>`
             : '';
 
         // Video link

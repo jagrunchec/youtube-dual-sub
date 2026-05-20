@@ -2085,10 +2085,10 @@ body.theme-light .ws.ws-peer-word-hl {
 
 .wb-freq {
     font-size: .68rem; font-family: 'Exo 2', sans-serif; font-weight: 600;
-    color: #ffc857; letter-spacing: .05em;
-    background: rgba(255,180,0,.15); border: 1px solid rgba(255,180,0,.45);
+    letter-spacing: .05em;
     border-radius: 4px; padding: .1rem .45rem;
     pointer-events: none;
+    /* colour comes from freq-* tier class */
 }
 
 /* ── Hover translation tooltip ───────────────────────────────────────────── */
@@ -2249,10 +2249,20 @@ body.theme-light .ws.ws-active {
 }
 .dico-freq {
     font-size: .68rem; font-weight: 600;
+    border-radius: 4px; padding: .05rem .4rem;
+    /* default (fallback) — overridden by freq-* classes below */
     color: #ffc857;
     background: rgba(255,180,0,.13); border: 1px solid rgba(255,180,0,.4);
-    border-radius: 4px; padding: .05rem .4rem;
 }
+
+/* ── Frequency colour tiers (shared by .dico-freq and .wb-freq) ──────────── */
+.freq-red    { color: #ff5555; background: rgba(255,60,60,.13);   border-color: rgba(255,60,60,.45);   }
+.freq-orange { color: #ff9500; background: rgba(255,149,0,.13);   border-color: rgba(255,149,0,.45);   }
+.freq-yellow { color: #ffd000; background: rgba(255,208,0,.13);   border-color: rgba(255,208,0,.45);   }
+.freq-green  { color: #34d058; background: rgba(52,208,88,.12);   border-color: rgba(52,208,88,.45);   }
+.freq-blue   { color: #60a5fa; background: rgba(96,165,250,.13);  border-color: rgba(96,165,250,.45);  }
+.freq-purple { color: #c084fc; background: rgba(192,132,252,.13); border-color: rgba(192,132,252,.45); }
+.freq-muted  { color: rgba(255,255,255,.45); background: rgba(255,255,255,.06); border-color: rgba(255,255,255,.18); }
 
 .dico-translation-cell {
     display: flex; flex-direction: column; gap: .25rem; min-width: 0;

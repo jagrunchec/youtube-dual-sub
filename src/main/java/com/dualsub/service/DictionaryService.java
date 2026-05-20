@@ -20,7 +20,11 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Locale;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -124,26 +128,13 @@ public class DictionaryService {
             }
         }
 
-        // 2. Find or create the DictionaryEntry for this video
-        Optional<DictionaryEntry> existing =
-            entryRepo.findByUser_IdAndWord_IdAndVideoId(user.getId(), dw.getId(), req.videoId);
-
         LookupResponse resp = new LookupResponse();
 
-        if (existing.isPresent()) {
-            DictionaryEntry entry = existing.get();
-            resp.translation   = entry.getTranslation();
-            resp.alreadySaved  = true;
-            resp.entryId       = entry.getId();
-            resp.wordId        = dw.getId();
-            resp.frequencyRank = dw.getFrequencyRank();
-            return resp;
-        }
-
-        // 3. Translate the word
+        // 2. Translate the word — a new entry is always created (same word can be
+        //    saved multiple times in the same video for different sentence contexts).
         String translation = translateWord(normalizedWord, req.sourceLang, req.targetLang);
 
-        // 4. Persist entry
+        // 3. Persist new entry
         DictionaryEntry entry = new DictionaryEntry();
         entry.setWord(dw);
         entry.setUser(user);
