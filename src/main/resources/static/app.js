@@ -659,8 +659,8 @@ let _wbPending         = false;  // translation request in progress
 // ── Dictionary pagination ────────────────────────────────────────────────────
 let _dicoAllItems  = [];   // full list returned by the server (current filters)
 let _dicoPage      = 0;    // current page index (0-based)
-let _dicoPageSize  = 20;   // entries per page — overridden by screen size on first open
-function _dicoDefaultPageSize() { return window.innerWidth < 640 ? 10 : 20; }
+let _dicoPageSize  = 6;    // entries per page — overridden by screen size on first open
+function _dicoDefaultPageSize() { return window.innerWidth < 640 ? 3 : 6; }
 // ─────────────────────────────────────────────────────────────────────────────
 
 const LANG_LABELS = {
