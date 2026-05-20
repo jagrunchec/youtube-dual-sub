@@ -2005,6 +2005,19 @@ body.theme-light .hud-track.ws-peer-hl .hud-text {
 body.theme-light .hud-track.ws-peer-hl.green-track  { box-shadow: inset 0 0 0 1px rgba(0,120,60,.25); }
 body.theme-light .hud-track.ws-peer-hl.orange-track { box-shadow: inset 0 0 0 1px rgba(200,100,0,.25); }
 
+/* Peer-word highlight: specific matched word in the other track */
+.ws.ws-peer-word-hl {
+    background: rgba(255, 200, 0, .25);
+    color: #ffd700;
+    outline: 1px solid rgba(255, 200, 0, .4);
+    border-radius: 3px;
+}
+body.theme-light .ws.ws-peer-word-hl {
+    background: rgba(200, 120, 0, .15);
+    color: #8a5c00;
+    outline-color: rgba(200, 120, 0, .3);
+}
+
 /* ══════════════════════════════════════════════════════════════
    DICTIONARY — WORD LOOKUP BAR (bottom of player)
    ══════════════════════════════════════════════════════════════ */
