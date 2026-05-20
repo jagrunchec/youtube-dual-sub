@@ -2586,10 +2586,7 @@ function renderDictionary(items, totalCount) {
             <div class="dico-actions-cell">
                 <button class="dico-del-entry-btn"
                     onclick="deleteDicoEntry(${item.entryId},'${esc(item.videoId || '')}')"
-                    title="Supprimer cette occurrence (vidéo)">🗑 occurrence</button>
-                <button class="dico-del-word-btn"
-                    onclick="deleteDicoWord(${item.wordId})"
-                    title="Supprimer le mot de toutes les vidéos">🗑 mot entier</button>
+                    title="Supprimer cette entrée">🗑</button>
             </div>`;
         frag.appendChild(row);
     });

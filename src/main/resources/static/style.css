@@ -2384,20 +2384,17 @@ body.theme-light .dico-tag-input { background: rgba(0,0,0,.04); border-color: rg
 
 /* Actions cell */
 .dico-actions-cell {
-    display: flex; flex-direction: column; gap: .3rem; align-items: flex-end; flex-shrink: 0;
+    display: flex; flex-direction: column; align-items: flex-end; flex-shrink: 0;
 }
-.dico-del-entry-btn, .dico-del-word-btn {
-    background: none; border: 1px solid rgba(255,80,60,.25);
-    color: rgba(255,100,80,.6); font-family: 'Orbitron', sans-serif;
-    font-size: .5rem; letter-spacing: .06em;
-    padding: .25rem .5rem; border-radius: 3px; cursor: pointer;
-    white-space: nowrap;
-    transition: background .15s, color .15s;
+.dico-del-entry-btn {
+    background: none; border: none;
+    color: rgba(255,100,80,.35); font-size: 1rem; line-height: 1;
+    padding: .15rem .2rem; border-radius: 4px; cursor: pointer;
+    transition: color .15s, background .15s;
 }
-.dico-del-entry-btn:hover, .dico-del-word-btn:hover {
-    background: rgba(255,80,60,.1); color: rgba(255,100,80,.9);
+.dico-del-entry-btn:hover {
+    color: rgba(255,80,60,.9); background: rgba(255,80,60,.1);
 }
-.dico-del-word-btn { border-color: rgba(255,80,60,.4); }
 
 /* ── Dictionary panel — light theme ────────────────────────── */
 body.theme-light .dico-panel { background: #f0f4fb; }
