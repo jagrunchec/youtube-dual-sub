@@ -65,10 +65,18 @@ public class OllamaService {
     private List<String> correctBatch(List<SubtitleEntry> batch, String sourceCode) throws Exception {
         String lang = sourceCode != null ? sourceCode.toUpperCase() : "?";
         StringBuilder prompt = new StringBuilder();
+        int nb = batch.size();
         prompt.append("Corrige les erreurs de transcription automatique (ASR) dans ces phrases en ").append(lang).append(".\n")
               .append("Corrige UNIQUEMENT les mots clairement mal transcrits : noms propres, termes techniques, chiffres.\n")
               .append("NE CHANGE PAS le contenu ni le sens. Si une phrase est correcte, retourne-la telle quelle.\n")
-              .append("Format : N: texte corrigé (une ligne par entrée, aucune explication).\n\n");
+              .append("Réponds avec EXACTEMENT ").append(nb).append(" lignes numérotées de 1 à ").append(nb)
+              .append(", SANS texte supplémentaire.\n")
+              .append("Format requis (exemple pour ").append(nb).append(" entrées) :\n");
+        for (int i = 1; i <= Math.min(nb, 3); i++) {
+            prompt.append(i).append(": phrase corrigée ").append(i).append("\n");
+        }
+        if (nb > 3) prompt.append("...\n");
+        prompt.append("\n");
         for (int i = 0; i < batch.size(); i++) {
             prompt.append(i + 1).append(": ").append(batch.get(i).getText()).append("\n");
         }
@@ -173,14 +181,21 @@ public class OllamaService {
         String tgtLabel = targetCode != null ? targetCode.toUpperCase() : "TGT";
 
         StringBuilder prompt = new StringBuilder();
+        int n = src.size();
         prompt.append("Tu es un traducteur expert ")
               .append(srcLabel).append("→").append(tgtLabel).append(".\n")
               .append("Améliore les traductions automatiques ci-dessous pour qu'elles soient ")
               .append("naturelles et idiomatiques en ").append(tgtLabel).append(".\n")
               .append("RÈGLE ABSOLUE : conserve les noms propres, termes techniques et ")
               .append("vocabulaire spécifique de la colonne [GT]. Améliore uniquement le style.\n")
-              .append("Réponds UNIQUEMENT avec les traductions améliorées, une par ligne, ")
-              .append("sous la forme « N: traduction ». Aucune explication.\n\n");
+              .append("Réponds avec EXACTEMENT ").append(n).append(" lignes numérotées ")
+              .append("de 1 à ").append(n).append(", SANS texte supplémentaire.\n")
+              .append("Format requis (exemple pour ").append(n).append(" entrées) :\n");
+        for (int i = 1; i <= Math.min(n, 3); i++) {
+            prompt.append(i).append(": traduction améliorée de l'entrée ").append(i).append("\n");
+        }
+        if (n > 3) prompt.append("...\n");
+        prompt.append("\n");
 
         for (int i = 0; i < src.size(); i++) {
             prompt.append(i + 1).append(": [").append(srcLabel).append("] ")
@@ -218,7 +233,10 @@ public class OllamaService {
         for (String line : text.split("\n")) {
             line = line.trim();
             if (line.matches("^\\d+[:.)]\\s+.+")) {
-                result.add(line.replaceFirst("^\\d+[:.)]\\s+", "").trim());
+                String extracted = line.replaceFirst("^\\d+[:.)]\\s+", "").trim();
+                // Safety: strip any leading "N: " the model may have added literally
+                extracted = extracted.replaceFirst("^[Nn][:.)]\\s+", "");
+                if (!extracted.isEmpty()) result.add(extracted);
             }
         }
         return result;
