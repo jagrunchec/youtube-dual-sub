@@ -289,13 +289,24 @@ public class DictionaryService {
         wordRepo.deleteAllByUserId(userId);
     }
 
+    /** Response from the translate-only (preview) endpoint. */
+    public static class TranslateResponse {
+        public String  translation;
+        public Integer frequencyRank;
+    }
+
     /**
      * Translate a word without saving it to the dictionary.
-     * Used by the hover bar to show a translation before the user decides to save.
+     * Also returns the frequency rank so the word bar can show it before the
+     * user decides to save — helping them judge how useful the word is to learn.
      */
-    public String translateOnly(String word, String sourceLang, String targetLang)
+    public TranslateResponse translateOnly(String word, String sourceLang, String targetLang)
             throws IOException, InterruptedException {
-        return translateWord(word.trim().toLowerCase(Locale.ROOT), sourceLang, targetLang);
+        String normalised = word.trim().toLowerCase(Locale.ROOT);
+        TranslateResponse resp = new TranslateResponse();
+        resp.translation   = translateWord(normalised, sourceLang, targetLang);
+        resp.frequencyRank = wordFreqService.lookupRank(normalised, sourceLang);
+        return resp;
     }
 
     // ── Internals ─────────────────────────────────────────────────────────────

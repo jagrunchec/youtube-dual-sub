@@ -2217,6 +2217,18 @@ function handleWordClick(el) {
             document.getElementById('wbSpinner').classList.add('hidden');
             document.getElementById('wbResult').textContent = data.translation || word;
             document.getElementById('wbSaveBtn').disabled = false;
+            // Show frequency rank immediately — before the user decides to save
+            const freqEl = document.getElementById('wbFreq');
+            if (freqEl) {
+                if (data.frequencyRank) {
+                    freqEl.textContent = `top ${data.frequencyRank.toLocaleString()}`;
+                    freqEl.title = 'Rang de fréquence dans la langue (sur 100 000 mots)';
+                    freqEl.className = `wb-freq ${freqClass(data.frequencyRank)}`;
+                    freqEl.classList.remove('hidden');
+                } else {
+                    freqEl.classList.add('hidden');
+                }
+            }
         })
         .catch(err => {
             _wbPending = false;

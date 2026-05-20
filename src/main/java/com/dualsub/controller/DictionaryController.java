@@ -5,6 +5,7 @@ import com.dualsub.service.DictionaryService;
 import com.dualsub.service.DictionaryService.DictionaryItemDto;
 import com.dualsub.service.DictionaryService.LookupRequest;
 import com.dualsub.service.DictionaryService.LookupResponse;
+import com.dualsub.service.DictionaryService.TranslateResponse;
 import com.dualsub.service.UserService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -47,8 +48,8 @@ public class DictionaryController {
                                        Principal principal) {
         if (principal == null) return ResponseEntity.status(401).build();
         try {
-            String translation = dictionaryService.translateOnly(word, from, to);
-            return ResponseEntity.ok(Map.of("translation", translation));
+            TranslateResponse resp = dictionaryService.translateOnly(word, from, to);
+            return ResponseEntity.ok(resp);
         } catch (Exception e) {
             return ResponseEntity.internalServerError()
                 .body(Map.of("error", e.getMessage()));
