@@ -2325,11 +2325,13 @@ function populateDicoLangFilter(items) {
 
 function populateDicoTagFilter(items) {
     const sel = document.getElementById('dicoTagFilter');
+    if (!sel) return;
     const cur = sel.value;
-    // Collect all tags across all items
-    const tags = [...new Set(
-        items.flatMap(i => (i.tags || []))
-    )].sort();
+    // items === null → collect from current DOM pills (after inline add/remove)
+    const tags = items === null
+        ? [...new Set([...document.querySelectorAll('.dico-tag-pill')]
+              .map(p => p.dataset.tag).filter(Boolean))].sort()
+        : [...new Set(items.flatMap(i => (i.tags || [])))].sort();
     sel.innerHTML = '<option value="">🏷 Tous les tags</option>';
     tags.forEach(tag => {
         const opt = document.createElement('option');
@@ -2639,24 +2641,3 @@ async function patchTags(wordId, tags) {
     }
 }
 
-// Rebuild tag filter from current items when called with null (DOM-only update)
-const _origPopulateDicoTagFilter = populateDicoTagFilter;
-function populateDicoTagFilter(items) {
-    if (items === null) {
-        // Collect tags from current DOM pills
-        const tags = [...new Set(
-            [...document.querySelectorAll('.dico-tag-pill')].map(p => p.dataset.tag)
-        )].sort();
-        const sel = document.getElementById('dicoTagFilter');
-        const cur = sel.value;
-        sel.innerHTML = '<option value="">🏷 Tous les tags</option>';
-        tags.forEach(tag => {
-            const opt = document.createElement('option');
-            opt.value = tag; opt.textContent = tag;
-            if (tag === cur) opt.selected = true;
-            sel.appendChild(opt);
-        });
-        return;
-    }
-    _origPopulateDicoTagFilter(items);
-}
