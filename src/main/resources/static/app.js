@@ -982,21 +982,18 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (bookmarkUrl) processVideo();
     }
 
-    // ── Word click + peer-track highlight on HUD subtitle spans ──
+    // ── Word click + peer-word highlight on HUD subtitle spans ──
     const sub1 = document.getElementById('subtitleText1');
     const sub2 = document.getElementById('subtitleText2');
-    const track1 = sub1.closest('.hud-track');
-    const track2 = sub2.closest('.hud-track');
 
-    sub1.addEventListener('click',      e => { if (e.target.classList.contains('ws')) handleWordClick(e.target); });
-    sub2.addEventListener('click',      e => { if (e.target.classList.contains('ws')) handleWordClick(e.target); });
+    sub1.addEventListener('click',     e => { if (e.target.classList.contains('ws')) handleWordClick(e.target); });
+    sub2.addEventListener('click',     e => { if (e.target.classList.contains('ws')) handleWordClick(e.target); });
 
-    // Hover over any word in track 1 → highlight track 2's current sentence
-    sub1.addEventListener('mouseover',  e => { if (e.target.classList.contains('ws') && sub2.textContent.trim()) track2.classList.add('ws-peer-hl'); });
-    sub1.addEventListener('mouseout',   e => { if (e.target.classList.contains('ws')) track2.classList.remove('ws-peer-hl'); });
-    // Hover over any word in track 2 → highlight track 1's current sentence
-    sub2.addEventListener('mouseover',  e => { if (e.target.classList.contains('ws') && sub1.textContent.trim()) track1.classList.add('ws-peer-hl'); });
-    sub2.addEventListener('mouseout',   e => { if (e.target.classList.contains('ws')) track1.classList.remove('ws-peer-hl'); });
+    // Hover → after 280 ms debounce, fetch translation and highlight matching span(s) in peer track
+    sub1.addEventListener('mouseover', e => { if (e.target.classList.contains('ws')) schedulePeerHL(e.target.dataset.word, 1, sub2); });
+    sub1.addEventListener('mouseout',  e => { if (e.target.classList.contains('ws')) cancelPeerHL(sub2); });
+    sub2.addEventListener('mouseover', e => { if (e.target.classList.contains('ws')) schedulePeerHL(e.target.dataset.word, 2, sub1); });
+    sub2.addEventListener('mouseout',  e => { if (e.target.classList.contains('ws')) cancelPeerHL(sub1); });
 });
 
 /* ─── Language card selection ───────────────────────────────── */
@@ -2069,6 +2066,66 @@ function wrapWords(text, track) {
         if (!clean || clean.length < 2) return esc(token);
         return `<span class="ws" data-word="${esc(clean.toLowerCase())}" data-track="${track}">${esc(token)}</span>`;
     }).join('');
+}
+
+/* ── Peer-track word highlight ───────────────────────────────── */
+
+let   _peerHLTimer = null;
+const _peerHLCache = new Map();   // "word:from:to" → [normalised translation words]
+
+function schedulePeerHL(word, track, peerEl) {
+    clearTimeout(_peerHLTimer);
+    _peerHLTimer = setTimeout(() => highlightPeerWord(word, track, peerEl), 280);
+}
+
+function cancelPeerHL(peerEl) {
+    clearTimeout(_peerHLTimer);
+    clearPeerHL(peerEl);
+}
+
+function clearPeerHL(peerEl) {
+    peerEl.querySelectorAll('.ws-peer-word-hl').forEach(s => s.classList.remove('ws-peer-word-hl'));
+}
+
+/** Strip accents and lowercase — used for fuzzy word matching across languages. */
+function normWord(str) {
+    return (str || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+}
+
+async function highlightPeerWord(word, track, peerEl) {
+    const sourceLang = track === 1 ? _activeLang1Code : _activeLang2Code;
+    const targetLang = track === 1 ? _activeLang2Code : _activeLang1Code;
+    if (!sourceLang || !targetLang || sourceLang === 'auto' || targetLang === 'auto') return;
+
+    const cacheKey = `${word}:${sourceLang}:${targetLang}`;
+    let transWords = _peerHLCache.get(cacheKey);
+
+    if (!transWords) {
+        try {
+            const r = await fetch(
+                `/api/dictionary/translate?word=${encodeURIComponent(word)}&from=${sourceLang}&to=${targetLang}`);
+            if (!r.ok) return;
+            const data = await r.json();
+            // Take the first alternative (before first comma) and split into tokens
+            const primary = (data.translation || '').split(',')[0].trim();
+            transWords = primary.split(/\s+/).map(normWord).filter(w => w.length > 1);
+            _peerHLCache.set(cacheKey, transWords);
+        } catch (e) { return; }
+    }
+
+    if (!transWords.length) return;
+    clearPeerHL(peerEl);
+
+    // For each translation token, find the best-matching .ws span in the peer track
+    peerEl.querySelectorAll('.ws').forEach(span => {
+        const sw = normWord(span.dataset.word);
+        if (!sw) return;
+        const matched = transWords.some(tw =>
+            sw === tw ||
+            (sw.length > 3 && tw.length > 3 && (sw.startsWith(tw) || tw.startsWith(sw)))
+        );
+        if (matched) span.classList.add('ws-peer-word-hl');
+    });
 }
 
 /* ── Word bar ────────────────────────────────────────────────── */
