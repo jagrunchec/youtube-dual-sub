@@ -28,14 +28,17 @@ public class DictionaryService {
 
     private final DictionaryWordRepository  wordRepo;
     private final DictionaryEntryRepository entryRepo;
+    private final WordFrequencyService      wordFreqService;
     private final HttpClient                httpClient;
     private final ObjectMapper              objectMapper = new ObjectMapper();
 
     public DictionaryService(DictionaryWordRepository wordRepo,
                              DictionaryEntryRepository entryRepo,
+                             WordFrequencyService wordFreqService,
                              SSLContext appSslContext) {
-        this.wordRepo  = wordRepo;
-        this.entryRepo = entryRepo;
+        this.wordRepo        = wordRepo;
+        this.entryRepo       = entryRepo;
+        this.wordFreqService = wordFreqService;
         this.httpClient = HttpClient.newBuilder()
             .sslContext(appSslContext)
             .followRedirects(HttpClient.Redirect.NORMAL)
@@ -102,6 +105,9 @@ public class DictionaryService {
                 w.setUser(user);
                 w.setWord(normalizedWord);
                 w.setSourceLanguage(req.sourceLang);
+                // Best-effort frequency rank from wordfreq (null if Python/wordfreq
+                // unavailable or the word is rarer than the top 100k).
+                w.setFrequencyRank(wordFreqService.lookupRank(normalizedWord, req.sourceLang));
                 w.setCreatedAt(LocalDateTime.now());
                 return wordRepo.save(w);
             });
@@ -178,7 +184,11 @@ public class DictionaryService {
         List<DictionaryItemDto> dtos = entries.stream().map(this::toDto).collect(Collectors.toList());
 
         if ("alpha".equalsIgnoreCase(sort)) {
-            dtos.sort(Comparator.comparing(d -> d.word));
+            dtos.sort((a, b) -> {
+                String wa = a.word == null ? "" : a.word;
+                String wb = b.word == null ? "" : b.word;
+                return wa.compareToIgnoreCase(wb);
+            });
         }
         return dtos;
     }

@@ -2294,9 +2294,9 @@ async function loadDictionary() {
         // Populate language filter options from results
         populateDicoLangFilter(items);
     } catch (e) {
-        console.error('[Dictionary] Load error:', e);
+        console.error('[Dictionary] Load error:', e, e && e.stack);
         document.getElementById('dicoList').innerHTML =
-            `<div class="dico-empty">Erreur lors du chargement du dictionnaire.</div>`;
+            `<div class="dico-empty">Erreur : ${esc(e && e.message ? e.message : String(e))}</div>`;
     }
 }
 
