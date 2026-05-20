@@ -2387,6 +2387,26 @@ function populateDicoTagFilter(items) {
  * top 5000  = green|  top 8000  = blue    |  top 12000 = purple
  * beyond    = muted
  */
+/**
+ * Speak a word using the browser's SpeechSynthesis API.
+ * lang is a BCP-47 language code (de, fr, en, es, it, pl).
+ */
+function speakWord(word, lang) {
+    if (!window.speechSynthesis) return;
+    window.speechSynthesis.cancel();
+    const utter = new SpeechSynthesisUtterance(word);
+    utter.lang = { de:'de-DE', fr:'fr-FR', en:'en-US', es:'es-ES', it:'it-IT', pl:'pl-PL' }[lang] || lang;
+    utter.rate = 0.85;   // slightly slower for clarity
+    window.speechSynthesis.speak(utter);
+}
+
+/** Speak the word currently displayed in the word bar. */
+function speakWbWord() {
+    const word = document.getElementById('wbWord').textContent;
+    const lang = _wbTrack === 1 ? _activeLang1Code : _activeLang2Code;
+    if (word && lang) speakWord(word, lang);
+}
+
 function freqClass(rank) {
     if (!rank) return '';
     if (rank <= 1000)  return 'freq-red';
@@ -2461,7 +2481,12 @@ function renderDictionary(items) {
 
         row.innerHTML = `
             <div class="dico-word-cell">
-                <span class="dico-word">${esc(item.word)}</span>
+                <div class="dico-word-row">
+                    <span class="dico-word">${esc(item.word)}</span>
+                    <button class="dico-speak-btn"
+                        onclick="speakWord('${esc(item.word)}','${item.sourceLanguage || ''}')"
+                        title="Écouter la prononciation">🔊</button>
+                </div>
                 <div class="dico-word-meta">
                     <span class="dico-lang-badge">${(item.sourceLanguage || '').toUpperCase()}</span>
                     ${freqHtml}
