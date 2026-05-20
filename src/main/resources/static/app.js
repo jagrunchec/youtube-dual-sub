@@ -2274,10 +2274,18 @@ function renderDictionary(items) {
                       title="${esc(item.videoTitle || item.videoId)}">🎬 ${esc(item.videoTitle || item.videoId)}</span>`
             : '';
 
-        // Context sentences (collapsed, show as tooltip-like excerpt)
-        const contextHtml = item.sourceSentence
-            ? `<div class="dico-context" title="${esc(item.sourceSentence)}">${esc(item.sourceSentence)}</div>`
-            : '';
+        // Both context sentences with their language badge
+        const srcLang  = (item.sourceLanguage || '').toUpperCase();
+        const tgtLang  = (item.targetLanguage || '').toUpperCase();
+        const contextHtml = (item.sourceSentence || item.translatedSentence) ? `
+            <div class="dico-sentences">
+                ${item.sourceSentence
+                    ? `<div class="dico-context"><span class="dico-lang-badge dico-sent-badge">${srcLang}</span> ${esc(item.sourceSentence)}</div>`
+                    : ''}
+                ${item.translatedSentence
+                    ? `<div class="dico-context dico-context-tgt"><span class="dico-lang-badge dico-sent-badge dico-sent-badge-tgt">${tgtLang}</span> ${esc(item.translatedSentence)}</div>`
+                    : ''}
+            </div>` : '';
 
         row.innerHTML = `
             <div class="dico-word-cell">

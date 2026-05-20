@@ -2205,6 +2205,12 @@ body.theme-light .ws.ws-active {
 .dico-date {
     font-size: .68rem; color: rgba(255,255,255,.25);
 }
+.dico-sentences { display: flex; flex-direction: column; gap: .3rem; margin-top: .2rem; }
+.dico-sent-badge { vertical-align: middle; margin-right: .3rem; font-size: .48rem; }
+.dico-context-tgt { color: rgba(255,220,140,.45); }
+.dico-sent-badge-tgt {
+    background: rgba(255,180,60,.1); border-color: rgba(255,180,60,.25); color: rgba(255,200,80,.7);
+}
 
 /* Notes cell */
 .dico-notes-cell { min-width: 160px; }
@@ -2272,6 +2278,10 @@ body.theme-light .dico-translation { color: #7a5000; }
 body.theme-light .dico-context { color: rgba(0,0,0,.38); }
 body.theme-light .dico-video-link { color: rgba(0,80,180,.6); }
 body.theme-light .dico-date { color: rgba(0,0,0,.28); }
+body.theme-light .dico-context-tgt { color: rgba(130,80,0,.55); }
+body.theme-light .dico-sent-badge-tgt {
+    background: rgba(180,100,0,.08); border-color: rgba(180,100,0,.22); color: rgba(140,80,0,.8);
+}
 body.theme-light .dico-notes-area {
     background: #fff; border-color: rgba(0,102,204,.15); color: #1a2a3a;
 }
