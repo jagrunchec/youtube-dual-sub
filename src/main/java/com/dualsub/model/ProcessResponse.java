@@ -14,6 +14,8 @@ public class ProcessResponse {
     private String lang2Code;
     /** Video title fetched at processing time (may be null). */
     private String videoTitle;
+    /** ID of the background Ollama refinement job (null if Ollama unavailable). */
+    private String refinementJobId;
 
     public String getVideoId() { return videoId; }
     public void setVideoId(String videoId) { this.videoId = videoId; }
@@ -38,4 +40,7 @@ public class ProcessResponse {
 
     public String getVideoTitle() { return videoTitle; }
     public void setVideoTitle(String videoTitle) { this.videoTitle = videoTitle; }
+
+    public String getRefinementJobId() { return refinementJobId; }
+    public void setRefinementJobId(String refinementJobId) { this.refinementJobId = refinementJobId; }
 }

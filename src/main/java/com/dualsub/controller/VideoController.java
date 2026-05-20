@@ -5,6 +5,7 @@ import com.dualsub.model.ProcessResponse;
 import com.dualsub.model.SubtitleEntry;
 import com.dualsub.model.User;
 import com.dualsub.service.PersistenceService;
+import com.dualsub.service.RefinementService;
 import com.dualsub.service.TranslationService;
 import com.dualsub.service.UserService;
 import com.dualsub.service.YouTubeTranscriptService;
@@ -32,17 +33,20 @@ public class VideoController {
     private final TranslationService translationService;
     private final PersistenceService persistenceService;
     private final UserService        userService;
+    private final RefinementService  refinementService;
     private final ExecutorService executor = Executors.newCachedThreadPool();
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     public VideoController(YouTubeTranscriptService youTubeService,
                            TranslationService translationService,
                            PersistenceService persistenceService,
-                           UserService userService) {
+                           UserService userService,
+                           RefinementService refinementService) {
         this.youTubeService     = youTubeService;
         this.translationService = translationService;
         this.persistenceService = persistenceService;
         this.userService        = userService;
+        this.refinementService  = refinementService;
     }
 
     @GetMapping("/languages")
@@ -287,6 +291,13 @@ public class VideoController {
                 // Language codes for the dictionary lookup (BCP-47)
                 resp.setLang1Code(lang1Auto ? (finalDetCode != null ? finalDetCode : "auto") : lang1);
                 resp.setLang2Code(lang2);
+
+                // ── Start background Ollama refinement (non-blocking) ─────────
+                String sourceCode = finalDetCode != null ? finalDetCode : "auto";
+                String jobId = refinementService.startRefinement(
+                    originalEntries, subtitles1, subtitles2,
+                    lang1Auto, lang1, lang2, sourceCode);
+                if (jobId != null) resp.setRefinementJobId(jobId);
 
                 emitter.send(SseEmitter.event().name("complete").data(
                     objectMapper.writeValueAsString(resp)));
