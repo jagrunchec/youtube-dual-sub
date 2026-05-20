@@ -3,7 +3,8 @@
    ══════════════════════════════════════════════════════════════ */
 
 let currentUser        = null;   // populated after successful login / checkAuth
-let _ollamaAutoMinutes = 2;      // -1=always off, 0=always on, N=auto if video>N min (default 2)
+let _ollamaAutoMinutes  = 2;      // -1=always off, 0=always on, N=auto if video>N min (default 2)
+let _whisperAutoMinutes = 10;     // threshold in min: <threshold → large-v3, ≥threshold → medium
 
 /* ── Check auth on load ─────────────────────────────────────── */
 async function checkAuth() {
@@ -347,6 +348,17 @@ function showProfileModal() {
             </div>
         </div>
         <div class="profile-section">
+            <h3>// TRANSCRIPTION WHISPER (FALLBACK)</h3>
+            <p class="pf-hint">Utilisé uniquement si la vidéo n'a pas de sous-titres YouTube. En mode <b>Auto</b>, large-v3 est choisi pour les vidéos courtes et medium pour les longues.</p>
+            <div class="pf" style="flex-direction:row;align-items:center;gap:.75rem;flex-wrap:wrap">
+                <label style="font-family:'Orbitron',monospace;font-size:.65rem;letter-spacing:.1em;white-space:nowrap">SEUIL AUTO (min) :</label>
+                <input type="number" id="pfWhisperThreshold"
+                       value="${u.whisperAutoMinutes > 0 ? u.whisperAutoMinutes : 10}"
+                       min="1" max="240" style="width:3.5rem;text-align:center">
+                <span class="pf-hint" style="display:inline;white-space:nowrap">&lt; seuil → large-v3 &nbsp;|&nbsp; ≥ seuil → medium</span>
+            </div>
+        </div>
+        <div class="profile-section">
             <h3>// CHANGER LE MOT DE PASSE</h3>
             <div class="pf"><label>MOT DE PASSE ACTUEL</label>
                 <div class="pwd-wrap">
@@ -401,6 +413,8 @@ async function saveProfile() {
     else if (ollamaMode === 'on') ollamaAutoMinutes = 0;
     else ollamaAutoMinutes = Math.max(1, parseInt(document.getElementById('pfOllamaThreshold')?.value) || 2);
 
+    const whisperAutoMinutes = Math.max(1, parseInt(document.getElementById('pfWhisperThreshold')?.value) || 10);
+
     try {
         const resp = await fetch('/api/users/me', {
             method: 'PUT',
@@ -413,6 +427,7 @@ async function saveProfile() {
                 birthYear:          document.getElementById('pfBirthYear').value || null,
                 country:            document.getElementById('pfCountry').value,
                 ollamaAutoMinutes:  ollamaAutoMinutes,
+                whisperAutoMinutes: whisperAutoMinutes,
             }),
         });
         const data = await resp.json();
@@ -731,6 +746,7 @@ const I18N = {
         errNoUrl:       'Veuillez saisir une URL YouTube.',
         errServer:      'Impossible de joindre le serveur. Vérifiez que Spring Boot tourne sur le port 8080.',
         stepTranscript:       'Récupération du transcript',
+        stepWhisper:          '🎙 Transcription Whisper (audio)',
         stepPunctuation:      'Restauration de la ponctuation',
         stepSentences:        'Découpage en phrases',
         stepTranslation:      'Traduction',
@@ -758,6 +774,7 @@ const I18N = {
         errNoUrl:       'Please enter a YouTube URL.',
         errServer:      'Cannot reach the server. Make sure Spring Boot is running on port 8080.',
         stepTranscript:       'Fetching transcript',
+        stepWhisper:          '🎙 Whisper transcription (audio)',
         stepPunctuation:      'Restoring punctuation',
         stepSentences:        'Splitting into sentences',
         stepTranslation:      'Translation',
@@ -785,6 +802,7 @@ const I18N = {
         errNoUrl:       'Por favor, introduce una URL de YouTube.',
         errServer:      'No se puede conectar al servidor. Verifica que Spring Boot esté en el puerto 8080.',
         stepTranscript:       'Obteniendo transcripción',
+        stepWhisper:          '🎙 Transcripción Whisper (audio)',
         stepPunctuation:      'Restaurando puntuación',
         stepSentences:        'Dividiendo en frases',
         stepTranslation:      'Traducción',
@@ -812,6 +830,7 @@ const I18N = {
         errNoUrl:       'Inserisci un URL di YouTube.',
         errServer:      'Impossibile raggiungere il server. Verifica che Spring Boot sia sulla porta 8080.',
         stepTranscript:       'Recupero trascrizione',
+        stepWhisper:          '🎙 Trascrizione Whisper (audio)',
         stepPunctuation:      'Ripristino punteggiatura',
         stepSentences:        'Suddivisione in frasi',
         stepTranslation:      'Traduzione',
@@ -839,6 +858,7 @@ const I18N = {
         errNoUrl:       'Bitte eine YouTube-URL eingeben.',
         errServer:      'Server nicht erreichbar. Prüfe, ob Spring Boot auf Port 8080 läuft.',
         stepTranscript:       'Transkript abrufen',
+        stepWhisper:          '🎙 Whisper-Transkription (Audio)',
         stepPunctuation:      'Zeichensetzung wiederherstellen',
         stepSentences:        'In Sätze aufteilen',
         stepTranslation:      'Übersetzung',
@@ -866,6 +886,7 @@ const I18N = {
         errNoUrl:       'Proszę podać adres URL YouTube.',
         errServer:      'Nie można połączyć się z serwerem. Sprawdź, czy Spring Boot działa na porcie 8080.',
         stepTranscript:       'Pobieranie transkrypcji',
+        stepWhisper:          '🎙 Transkrypcja Whisper (audio)',
         stepPunctuation:      'Przywracanie interpunkcji',
         stepSentences:        'Podział na zdania',
         stepTranslation:      'Tłumaczenie',
@@ -1237,6 +1258,7 @@ function escapeHtml(str) {
 /* ─── Pipeline steps (for SSE progress display) ─────────────── */
 const PIPELINE_STEPS = [
     { key: 'transcript',         label: '', color: '#00d4ff' },   // cyan
+    { key: 'whisper',            label: '', color: '#ff9f1c' },   // amber-gold (Whisper fallback)
     { key: 'punctuation',        label: '', color: '#a855f7' },   // purple
     { key: 'sentences',          label: '', color: '#ff7b00' },   // orange
     { key: 'translation1',       label: '', color: '#00ff88' },   // green
@@ -1248,12 +1270,13 @@ const PIPELINE_STEPS = [
 function initProgress(lang1Label, lang2Label) {
     const t = I18N[uiLang];
     PIPELINE_STEPS[0].label = t.stepTranscript;
-    PIPELINE_STEPS[1].label = t.stepPunctuation;
-    PIPELINE_STEPS[2].label = t.stepSentences;
-    PIPELINE_STEPS[3].label = immersionMode ? t.stepSourceAuto : t.stepTranslation + ' ' + lang1Label;
-    PIPELINE_STEPS[4].label = t.stepTranslation + ' ' + lang2Label;
-    PIPELINE_STEPS[5].label = t.stepOllamaTranscript;
-    PIPELINE_STEPS[6].label = t.stepOllamaTranslation;
+    PIPELINE_STEPS[1].label = t.stepWhisper;
+    PIPELINE_STEPS[2].label = t.stepPunctuation;
+    PIPELINE_STEPS[3].label = t.stepSentences;
+    PIPELINE_STEPS[4].label = immersionMode ? t.stepSourceAuto : t.stepTranslation + ' ' + lang1Label;
+    PIPELINE_STEPS[5].label = t.stepTranslation + ' ' + lang2Label;
+    PIPELINE_STEPS[6].label = t.stepOllamaTranscript;
+    PIPELINE_STEPS[7].label = t.stepOllamaTranslation;
 
     const panel = document.getElementById('progressPanel');
     panel.innerHTML = `
@@ -1282,8 +1305,8 @@ function updateStep(stepKey, cached) {
         ? (stepKey === 'transcript' ? I18N[uiLang].stepCached : step.label + ' ⚡')
         : step.label;
 
-    // Use the translation1 position (idx=3) for the bar when cached
-    const barIdx = cached ? 3 : idx;
+    // When cached, jump the bar to the translation1 position (skipping transcript processing steps)
+    const barIdx = cached ? keys.indexOf('translation1') : idx;
     const pct    = Math.round(((barIdx + 1) / (PIPELINE_STEPS.length + 1)) * 100);
 
     document.getElementById('progressPanel').style.setProperty('--prog-color', color);
@@ -1329,7 +1352,13 @@ function processVideo() {
     initProgress(lang1Label, lang2Label);
 
     const ollamaEnabled = document.getElementById('ollamaCheck')?.checked ?? false;
-    const params = new URLSearchParams({ videoUrl: url, lang1: effectiveLang1, lang2: effectiveLang2, ollama: ollamaEnabled });
+    const whisperModel  = _getEffectiveWhisperModel(
+        player && typeof player.getDuration === 'function' ? player.getDuration() : 0
+    );
+    const params = new URLSearchParams({
+        videoUrl: url, lang1: effectiveLang1, lang2: effectiveLang2,
+        ollama: ollamaEnabled, whisperModel
+    });
     const sse = new EventSource('/api/process/stream?' + params);
     let sseHandled = false;
 
@@ -2900,6 +2929,7 @@ function _applyOllamaDefault(durationSec) {
     }
     cb.checked = checked;
     updateOllamaLabel();
+    _updateWhisperHint(durationSec);
 }
 
 /** Sync _ollamaAutoMinutes from currentUser and re-apply to the checkbox. */
@@ -2907,9 +2937,48 @@ function _syncOllamaPreference() {
     if (currentUser && currentUser.ollamaAutoMinutes != null) {
         _ollamaAutoMinutes = currentUser.ollamaAutoMinutes;
     }
-    // If a video is already loaded, update the checkbox immediately
+    if (currentUser && currentUser.whisperAutoMinutes != null) {
+        _whisperAutoMinutes = currentUser.whisperAutoMinutes;
+    }
+    // If a video is already loaded, update the checkbox + whisper hint immediately
     if (player && typeof player.getDuration === 'function') {
         _applyOllamaDefault(player.getDuration());
+    } else {
+        _updateWhisperHint(0);
     }
+}
+
+// ─── Whisper model selection helpers ─────────────────────────
+
+/**
+ * Updates the "Auto" pill label to show which model will be used given the
+ * current video duration and the user's _whisperAutoMinutes threshold.
+ * @param {number} durationSec  video duration in seconds (0 if unknown)
+ */
+function _updateWhisperHint(durationSec) {
+    const hintEl = document.getElementById('whisperAutoHint');
+    if (!hintEl) return;
+    let model;
+    if (typeof durationSec === 'number' && durationSec > 0) {
+        model = durationSec < _whisperAutoMinutes * 60 ? 'large-v3' : 'medium';
+    } else {
+        model = '?';
+    }
+    hintEl.textContent = `Auto (${model})`;
+}
+
+/**
+ * Returns the effective whisper model to send to the backend.
+ * Resolves "auto" → "large-v3" or "medium" based on video duration.
+ * @param {number} durationSec  video duration in seconds (0 if unknown)
+ * @returns {string} the model key ("none" | "large-v3" | "medium" | "small" | "openai")
+ */
+function _getEffectiveWhisperModel(durationSec) {
+    const radio    = document.querySelector('input[name="whisperModel"]:checked');
+    const selected = radio?.value ?? 'auto';
+    if (selected !== 'auto') return selected;
+    // Resolve auto: fall back to 'medium' if duration is unknown
+    if (typeof durationSec !== 'number' || durationSec <= 0) return 'medium';
+    return durationSec < _whisperAutoMinutes * 60 ? 'large-v3' : 'medium';
 }
 

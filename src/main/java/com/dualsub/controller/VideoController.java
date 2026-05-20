@@ -146,6 +146,7 @@ public class VideoController {
             @RequestParam String lang1,
             @RequestParam String lang2,
             @RequestParam(defaultValue = "false") boolean ollama,
+            @RequestParam(defaultValue = "none") String whisperModel,
             Principal principal) {
 
         SseEmitter emitter = new SseEmitter(300_000L); // 5-minute timeout
@@ -205,6 +206,22 @@ public class VideoController {
 
                     if (!original.isEmpty()) {
                         persistenceService.cacheTranscript(videoId, transcript);
+                    }
+                }
+
+                // ── Whisper fallback: if YouTube returned nothing AND Whisper was requested ──
+                if (original.isEmpty() && !"none".equals(whisperModel)) {
+                    progress.accept("{\"step\":\"whisper\"}");
+                    try {
+                        YouTubeTranscriptService.TranscriptResult whisperResult =
+                            youTubeService.fetchWithWhisper(videoId, whisperModel, progress);
+                        original     = whisperResult.entries;
+                        detectedCode = whisperResult.languageCode;
+                        if (!original.isEmpty()) {
+                            persistenceService.cacheTranscript(videoId, whisperResult);
+                        }
+                    } catch (Exception e) {
+                        System.err.println("[Whisper] Fallback failed: " + e.getMessage());
                     }
                 }
 

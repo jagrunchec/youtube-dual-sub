@@ -598,6 +598,37 @@ body.theme-light .ollama-label { color: #006030; font-weight: 600; }
 body.theme-light .ollama-option:has(input:not(:checked)) { border-color: rgba(0,0,0,.2); background: rgba(0,0,0,.03); }
 body.theme-light .ollama-option:has(input:not(:checked)) .ollama-label { color: rgba(0,0,0,.5); font-weight: 400; }
 
+/* ── Whisper fallback picker ─────────────────────────────────── */
+.whisper-picker {
+    display: flex; flex-wrap: wrap; align-items: center; gap: .35rem;
+    padding: .3rem 0;
+}
+.wp-label {
+    font-family: 'Orbitron', monospace; font-size: .6rem; letter-spacing: .07em;
+    color: rgba(0,212,255,.45); white-space: nowrap; margin-right: .15rem;
+}
+.wp-pill {
+    display: inline-flex; align-items: center; cursor: pointer;
+    padding: .18rem .5rem; border-radius: 999px;
+    border: 1px solid rgba(255,255,255,.1); background: rgba(255,255,255,.03);
+    font-family: 'Exo 2', sans-serif; font-size: .7rem; color: rgba(255,255,255,.45);
+    transition: border-color .15s, background .15s, color .15s;
+    user-select: none;
+}
+.wp-pill:has(input:checked) {
+    border-color: rgba(0,212,255,.5); background: rgba(0,212,255,.12); color: #00d4ff;
+    font-weight: 600;
+}
+.wp-pill:hover:not(:has(input:checked)) {
+    border-color: rgba(0,212,255,.2); background: rgba(0,212,255,.05); color: rgba(255,255,255,.65);
+}
+.wp-pill input[type="radio"] { display: none; }
+/* Light theme */
+body.theme-light .wp-label { color: rgba(0,50,100,.4); }
+body.theme-light .wp-pill { color: rgba(0,0,0,.4); border-color: rgba(0,0,0,.1); background: rgba(0,0,0,.02); }
+body.theme-light .wp-pill:has(input:checked) { border-color: #0066cc; background: rgba(0,102,204,.1); color: #0066cc; }
+body.theme-light .wp-pill:hover:not(:has(input:checked)) { border-color: rgba(0,102,204,.2); background: rgba(0,102,204,.04); color: rgba(0,0,0,.6); }
+
 .block-label {
     font-family: 'Orbitron', monospace;
     font-size: .65rem;

@@ -302,6 +302,7 @@ public class AuthController {
             Map.entry("learningLevel",       u.getLearningLevel()       != null ? u.getLearningLevel()       : "{}"),
             Map.entry("studyGoalMinutesWeek",u.getStudyGoalMinutesWeek()  != null ? u.getStudyGoalMinutesWeek()  : 0),
             Map.entry("ollamaAutoMinutes",   u.getOllamaAutoMinutes()    != null ? u.getOllamaAutoMinutes()    : 2),
+            Map.entry("whisperAutoMinutes",  u.getWhisperAutoMinutes()   != null ? u.getWhisperAutoMinutes()   : 10),
             Map.entry("active",              u.isActive()),
             Map.entry("createdAt",           u.getCreatedAt() != null ? u.getCreatedAt().toString() : "")
         );

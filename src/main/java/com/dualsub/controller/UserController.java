@@ -51,7 +51,8 @@ public class UserController {
                 str(body, "learningGoals"),
                 str(body, "learningLevel"),
                 intVal(body, "studyGoalMinutesWeek"),
-                intVal(body, "ollamaAutoMinutes")
+                intVal(body, "ollamaAutoMinutes"),
+                intVal(body, "whisperAutoMinutes")
             );
             return ResponseEntity.ok(AuthController.toDto(userService.getByEmail(principal.getName())));
         } catch (IllegalArgumentException e) {

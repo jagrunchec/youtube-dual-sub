@@ -1,0 +1,13 @@
+databaseChangeLog:
+  - changeSet:
+      id: 016-user-whisper-prefs
+      author: dualsub
+      changes:
+        - addColumn:
+            tableName: users
+            columns:
+              - column:
+                  name: whisper_auto_minutes
+                  type: INTEGER
+                  defaultValueNumeric: 10
+                  remarks: "Whisper model threshold in minutes: videos shorter than this use large-v3, longer use medium."

@@ -36,6 +36,10 @@ public class YouTubeTranscriptService {
     @Value("${app.transcript.python:python}")
     private String pythonExe;
 
+    /** OpenAI API key — optional, only needed for the "openai" whisper engine. */
+    @Value("${app.openai.api-key:}")
+    private String openaiApiKey;
+
     private static final String USER_AGENT =
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
         "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
@@ -936,6 +940,137 @@ public class YouTubeTranscriptService {
             throw new IOException("HTTP " + response.statusCode() + " for: " + url);
         }
         return response.body();
+    }
+
+    // ─── Whisper transcription ───────────────────────────────────
+
+    /**
+     * Transcribes a YouTube video using Whisper — used as a fallback when YouTube
+     * has no subtitle track.
+     *
+     * Supported values for {@code whisperModel}:
+     *   "large-v3" | "medium" | "small" | "base" | "tiny"  → faster-whisper (local GPU/CPU)
+     *   "openai"                                            → OpenAI Whisper API (~$0.006/min)
+     *
+     * Whisper already adds punctuation, so we skip addPunctuation() and go straight to
+     * mergeSubtitles() → splitAtSentences().
+     *
+     * @param videoId      YouTube video ID
+     * @param whisperModel the engine/model to use
+     * @param progress     SSE callback (receives raw JSON strings)
+     */
+    public TranscriptResult fetchWithWhisper(String videoId, String whisperModel,
+                                             Consumer<String> progress)
+            throws IOException, InterruptedException {
+
+        // Resolve script directory from the main transcript script path
+        java.io.File transcriptScript = new java.io.File(transcriptScriptPath);
+        if (!transcriptScript.isAbsolute()) {
+            transcriptScript = new java.io.File(System.getProperty("user.dir"), transcriptScriptPath);
+        }
+        java.io.File scriptDir = transcriptScript.getParentFile();
+
+        java.io.File whisperScript;
+        List<String> cmd;
+
+        if ("openai".equals(whisperModel)) {
+            whisperScript = new java.io.File(scriptDir, "whisper_openai.py");
+            if (openaiApiKey == null || openaiApiKey.isBlank()) {
+                throw new IOException(
+                    "OpenAI API key not configured. Set app.openai.api-key in application.properties.");
+            }
+            cmd = List.of(pythonExe, whisperScript.getAbsolutePath(), videoId, openaiApiKey);
+        } else {
+            whisperScript = new java.io.File(scriptDir, "whisper_transcribe.py");
+            cmd = List.of(pythonExe, whisperScript.getAbsolutePath(), videoId, whisperModel);
+        }
+
+        if (!whisperScript.exists()) {
+            throw new IOException("Whisper script not found: " + whisperScript.getAbsolutePath());
+        }
+
+        System.out.println("[Whisper] Starting engine=" + whisperModel + " for videoId=" + videoId);
+
+        ProcessBuilder pb = new ProcessBuilder(cmd);
+        pb.redirectErrorStream(false);
+        pb.environment().put("PYTHONIOENCODING", "utf-8");
+        pb.environment().put("PYTHONUTF8", "1");
+        Process proc = pb.start();
+
+        // Drain stderr concurrently so the process doesn't deadlock on a full pipe
+        StringBuilder stderrSb = new StringBuilder();
+        Thread stderrThread = new Thread(() -> {
+            try (BufferedReader r = new BufferedReader(
+                    new InputStreamReader(proc.getErrorStream(), StandardCharsets.UTF_8))) {
+                String line;
+                while ((line = r.readLine()) != null) {
+                    stderrSb.append(line).append("\n");
+                    System.err.println("[Whisper] " + line);
+                }
+            } catch (IOException ignored) {}
+        });
+        stderrThread.setDaemon(true);
+        stderrThread.start();
+
+        // Read stdout (JSON output from the whisper script)
+        String jsonOutput;
+        try (BufferedReader reader = new BufferedReader(
+                new InputStreamReader(proc.getInputStream(), StandardCharsets.UTF_8))) {
+            StringBuilder sb = new StringBuilder();
+            String line;
+            while ((line = reader.readLine()) != null) sb.append(line);
+            jsonOutput = sb.toString();
+        }
+
+        boolean finished = proc.waitFor(600, TimeUnit.SECONDS);
+        stderrThread.join(2000);
+
+        if (!finished) {
+            proc.destroyForcibly();
+            throw new IOException("Whisper process timed out after 10 minutes.");
+        }
+
+        System.out.println("[Whisper] Script stdout: " + jsonOutput.length() + " chars");
+
+        if (jsonOutput.isBlank()) {
+            String err = stderrSb.toString();
+            throw new IOException("Whisper produced no output. stderr: "
+                + err.substring(0, Math.min(400, err.length())));
+        }
+
+        // Parse JSON — same format as get_transcript.py: {"language":"xx","entries":[...]}
+        JsonNode root = objectMapper.readTree(jsonOutput);
+
+        if (root.isObject() && root.has("error")) {
+            throw new RuntimeException("Whisper error: " + root.path("error").asText());
+        }
+        if (!root.isObject() || !root.has("entries")) {
+            throw new IOException("Unexpected Whisper JSON: "
+                + jsonOutput.substring(0, Math.min(200, jsonOutput.length())));
+        }
+
+        String detectedLanguage = root.path("language").asText(null);
+        JsonNode entriesNode    = root.path("entries");
+
+        List<SubtitleEntry> raw = new ArrayList<>();
+        for (JsonNode node : entriesNode) {
+            long startMs    = (long)(node.path("start").asDouble(0) * 1000);
+            long durationMs = (long)(node.path("duration").asDouble(3) * 1000);
+            String text     = cleanSubtitleText(node.path("text").asText("").trim());
+            if (!text.isEmpty() && durationMs > 0) {
+                raw.add(new SubtitleEntry(startMs, durationMs, text));
+            }
+        }
+
+        // Whisper already punctuates — skip addPunctuation, merge then split at sentence boundaries
+        List<SubtitleEntry> entries = mergeSubtitles(raw);
+
+        progress.accept("{\"step\":\"sentences\"}");
+        entries = splitAtSentences(entries);
+
+        System.out.println("[Whisper] Done: " + raw.size() + " segments → "
+            + entries.size() + " sentence-aligned entries");
+        return new TranscriptResult(detectedLanguage, entries);
     }
 
     // ─── Result holder ───────────────────────────────────────────

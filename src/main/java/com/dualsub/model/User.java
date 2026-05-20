@@ -77,6 +77,15 @@ public class User {
     @Column(name = "ollama_auto_minutes")
     private Integer ollamaAutoMinutes;
 
+    /**
+     * Whisper auto-model threshold (minutes).
+     * Videos shorter than this use faster-whisper large-v3;
+     * videos at or above this use faster-whisper medium.
+     * Default 10 (set by Liquibase).
+     */
+    @Column(name = "whisper_auto_minutes")
+    private Integer whisperAutoMinutes;
+
     @Column(name = "is_active", nullable = false)
     private boolean active = true;
 
@@ -146,6 +155,9 @@ public class User {
 
     public Integer getOllamaAutoMinutes()                { return ollamaAutoMinutes; }
     public void setOllamaAutoMinutes(Integer v)          { this.ollamaAutoMinutes = v; }
+
+    public Integer getWhisperAutoMinutes()               { return whisperAutoMinutes; }
+    public void setWhisperAutoMinutes(Integer v)         { this.whisperAutoMinutes = v; }
 
     public boolean isActive()                            { return active; }
     public void setActive(boolean active)                { this.active = active; }

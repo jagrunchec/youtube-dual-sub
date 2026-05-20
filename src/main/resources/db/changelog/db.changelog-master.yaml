@@ -11,3 +11,5 @@ databaseChangeLog:
       file: db/changelog/changes/005-dictionary.yaml
   - include:
       file: db/changelog/changes/006-ollama-prefs.yaml
+  - include:
+      file: db/changelog/changes/007-whisper-prefs.yaml

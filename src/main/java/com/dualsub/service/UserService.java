@@ -236,7 +236,8 @@ public class UserService {
                                Integer birthYear, String country,
                                String learningGoals, String learningLevel,
                                Integer studyGoalMinutesWeek,
-                               Integer ollamaAutoMinutes) {
+                               Integer ollamaAutoMinutes,
+                               Integer whisperAutoMinutes) {
         User user = getById(userId);
         if (firstName != null)            user.setFirstName(firstName.trim());
         if (lastName != null)             user.setLastName(lastName.trim());
@@ -249,6 +250,8 @@ public class UserService {
         if (studyGoalMinutesWeek != null) user.setStudyGoalMinutesWeek(studyGoalMinutesWeek);
         // ollamaAutoMinutes: -1=always off, 0=always on, N=auto. Always saved when present.
         if (ollamaAutoMinutes != null)    user.setOllamaAutoMinutes(ollamaAutoMinutes);
+        // whisperAutoMinutes: threshold in minutes for large-v3 vs medium selection.
+        if (whisperAutoMinutes != null)   user.setWhisperAutoMinutes(whisperAutoMinutes);
         return userRepository.save(user);
     }
 
