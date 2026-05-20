@@ -982,13 +982,21 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (bookmarkUrl) processVideo();
     }
 
-    // ── Word click delegation on HUD subtitle spans ──────────
-    document.getElementById('subtitleText1').addEventListener('click', e => {
-        if (e.target.classList.contains('ws')) handleWordClick(e.target);
-    });
-    document.getElementById('subtitleText2').addEventListener('click', e => {
-        if (e.target.classList.contains('ws')) handleWordClick(e.target);
-    });
+    // ── Word click + peer-track highlight on HUD subtitle spans ──
+    const sub1 = document.getElementById('subtitleText1');
+    const sub2 = document.getElementById('subtitleText2');
+    const track1 = sub1.closest('.hud-track');
+    const track2 = sub2.closest('.hud-track');
+
+    sub1.addEventListener('click',      e => { if (e.target.classList.contains('ws')) handleWordClick(e.target); });
+    sub2.addEventListener('click',      e => { if (e.target.classList.contains('ws')) handleWordClick(e.target); });
+
+    // Hover over any word in track 1 → highlight track 2's current sentence
+    sub1.addEventListener('mouseover',  e => { if (e.target.classList.contains('ws') && sub2.textContent.trim()) track2.classList.add('ws-peer-hl'); });
+    sub1.addEventListener('mouseout',   e => { if (e.target.classList.contains('ws')) track2.classList.remove('ws-peer-hl'); });
+    // Hover over any word in track 2 → highlight track 1's current sentence
+    sub2.addEventListener('mouseover',  e => { if (e.target.classList.contains('ws') && sub1.textContent.trim()) track1.classList.add('ws-peer-hl'); });
+    sub2.addEventListener('mouseout',   e => { if (e.target.classList.contains('ws')) track1.classList.remove('ws-peer-hl'); });
 });
 
 /* ─── Language card selection ───────────────────────────────── */
