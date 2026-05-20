@@ -174,19 +174,49 @@ public class SummaryService {
     // ── Engine implementations ────────────────────────────────────
 
     private String summarizeWithOllama(String transcript, String lang) throws Exception {
-        String prompt = buildPrompt(transcript, lang);
+        String langName = LANG_NAMES_FR.getOrDefault(lang, lang);
+
+        // mistral-nemo is a chat-tuned model — use /api/chat with system + user messages
+        // rather than /api/generate. This gives the model a clear role boundary and
+        // dramatically improves instruction-following on long inputs.
+        String systemMsg =
+            "Tu es un outil de résumé automatique de vidéos YouTube. "
+          + "Tu lis le transcript fourni par l'utilisateur et tu produis un résumé "
+          + "factuel, neutre et fidèle au contenu. "
+          + "Tu n'inventes JAMAIS d'informations qui ne sont pas dans le transcript. "
+          + "Tu ne fais aucun préambule : tu commences directement par le résumé.";
+
+        String userMsg =
+            "Résume la vidéo ci-dessous en " + langName + ".\n"
+          + "Longueur : 4 à 6 phrases concises.\n"
+          + "Contenu : sujet principal, points clés, conclusion.\n\n"
+          + "TRANSCRIPT :\n"
+          + transcript;
 
         Map<String, Object> body = new LinkedHashMap<>();
-        body.put("model",   ollamaModel);
-        body.put("prompt",  prompt);
-        body.put("stream",  false);
-        body.put("options", Map.of("temperature", 0.3, "num_predict", 700));
+        body.put("model", ollamaModel);
+        body.put("messages", List.of(
+            Map.of("role", "system", "content", systemMsg),
+            Map.of("role", "user",   "content", userMsg)
+        ));
+        body.put("stream", false);
+        // num_ctx = 16384 lets the full transcript fit for videos up to ~50 min.
+        // Default Ollama context is 2048-4096 which silently truncates long transcripts.
+        body.put("options", Map.of(
+            "temperature", 0.3,
+            "num_predict", 700,
+            "num_ctx",     16384
+        ));
+
+        String jsonBody = objectMapper.writeValueAsString(body);
+        System.out.println("[Summary] Ollama call: transcript=" + transcript.length()
+            + " chars, lang=" + lang + ", model=" + ollamaModel);
 
         HttpRequest req = HttpRequest.newBuilder()
-            .uri(URI.create(ollamaUrl + "/api/generate"))
-            .timeout(Duration.ofSeconds(180))
+            .uri(URI.create(ollamaUrl + "/api/chat"))
+            .timeout(Duration.ofSeconds(240))
             .header("Content-Type", "application/json")
-            .POST(HttpRequest.BodyPublishers.ofString(objectMapper.writeValueAsString(body)))
+            .POST(HttpRequest.BodyPublishers.ofString(jsonBody))
             .build();
 
         HttpResponse<String> resp = httpClient.send(req, HttpResponse.BodyHandlers.ofString());
@@ -194,7 +224,11 @@ public class SummaryService {
             throw new RuntimeException("Ollama HTTP " + resp.statusCode() + ": "
                 + resp.body().substring(0, Math.min(300, resp.body().length())));
         }
-        return objectMapper.readTree(resp.body()).path("response").asText();
+        // /api/chat response shape: { "message": { "role": "assistant", "content": "..." }, ... }
+        var root = objectMapper.readTree(resp.body());
+        String content = root.path("message").path("content").asText();
+        System.out.println("[Summary] Ollama returned " + content.length() + " chars");
+        return content;
     }
 
     private String summarizeWithGemini(String transcript, String lang) throws Exception {
@@ -241,7 +275,14 @@ public class SummaryService {
 
     // ── Helpers ───────────────────────────────────────────────────
 
-    /** Joins all subtitle entries into one plain-text block, paragraph per ~10 entries. */
+    /** Soft cap on transcript size sent to the LLM (~12k tokens for European languages). */
+    private static final int TRANSCRIPT_MAX_CHARS = 50_000;
+
+    /**
+     * Joins all subtitle entries into one plain-text block.
+     * If the result exceeds TRANSCRIPT_MAX_CHARS, keeps the beginning (80%) and end (20%)
+     * — intro + conclusion are usually the most informative for a summary.
+     */
     private String entriesToPlainText(List<SubtitleEntry> entries) {
         StringBuilder sb = new StringBuilder();
         int i = 0;
@@ -250,7 +291,16 @@ public class SummaryService {
             sb.append(' ');
             if (++i % 10 == 0) sb.append('\n');
         }
-        return sb.toString().trim();
+        String full = sb.toString().trim();
+        if (full.length() <= TRANSCRIPT_MAX_CHARS) return full;
+
+        int headLen = (int)(TRANSCRIPT_MAX_CHARS * 0.8);
+        int tailLen = TRANSCRIPT_MAX_CHARS - headLen;
+        String head = full.substring(0, headLen);
+        String tail = full.substring(full.length() - tailLen);
+        System.out.println("[Summary] Transcript truncated: " + full.length()
+            + " chars → " + (headLen + tailLen) + " (head+tail)");
+        return head + "\n\n[…transcript abrégé pour le résumé…]\n\n" + tail;
     }
 
     /** Builds the summarization prompt. Same structure for Ollama and Gemini. */
