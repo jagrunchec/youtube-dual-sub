@@ -186,6 +186,34 @@
     background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.08); border-radius: 3px;
 }
 .pf-check input { width: 14px; height: 14px; accent-color: #00d4ff; }
+
+/* ── Ollama profile preference ────────────────────────────────────── */
+.pf-hint {
+    font-family: 'Exo 2', sans-serif; font-size: .78rem;
+    color: rgba(192,200,232,.65); line-height: 1.5; margin: 0;
+}
+.pf-ollama-radios { display: flex; flex-direction: column; gap: .5rem; }
+.pf-radio {
+    display: flex; align-items: baseline; gap: .55rem; cursor: pointer;
+    font-family: 'Exo 2', sans-serif; font-size: .85rem; color: #c0c8e8;
+    padding: .4rem .6rem; border-radius: 5px;
+    border: 1px solid rgba(255,255,255,.06); background: rgba(255,255,255,.02);
+    transition: border-color .15s, background .15s;
+}
+.pf-radio:hover { border-color: rgba(0,212,255,.2); background: rgba(0,212,255,.04); }
+.pf-radio input[type="radio"] { accent-color: #00d4ff; flex-shrink: 0; }
+.pf-radio input[type="number"] {
+    background: rgba(255,255,255,.06); border: 1px solid rgba(0,212,255,.25);
+    color: #e0e8ff; border-radius: 4px; padding: .1rem .3rem;
+    font-family: 'Exo 2', sans-serif; font-size: .85rem;
+}
+/* Light theme */
+body.theme-light .pf-hint { color: rgba(0,50,100,.55); }
+body.theme-light .pf-radio { color: #1a2a3a; border-color: rgba(0,0,0,.07); background: rgba(0,0,0,.02); }
+body.theme-light .pf-radio:hover { border-color: rgba(0,102,204,.2); background: rgba(0,102,204,.04); }
+body.theme-light .pf-radio input[type="radio"] { accent-color: #0066cc; }
+body.theme-light .pf-radio input[type="number"] { background: #f4f8ff; border-color: rgba(0,102,204,.25); color: #1a2a3a; }
+
 .profile-actions { display: flex; flex-direction: column; gap: .75rem; border-top: 1px solid rgba(0,212,255,.1); padding-top: 1rem; }
 .pwd-wrap { display: flex; gap: .5rem; align-items: center; }
 .pwd-wrap input { flex: 1; }

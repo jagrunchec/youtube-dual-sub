@@ -9,3 +9,5 @@ databaseChangeLog:
       file: db/changelog/changes/004-login-lockout.yaml
   - include:
       file: db/changelog/changes/005-dictionary.yaml
+  - include:
+      file: db/changelog/changes/006-ollama-prefs.yaml

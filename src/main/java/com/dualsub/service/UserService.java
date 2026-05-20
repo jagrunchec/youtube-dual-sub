@@ -235,17 +235,20 @@ public class UserService {
                                String nativeLanguage, String languagesToLearn,
                                Integer birthYear, String country,
                                String learningGoals, String learningLevel,
-                               Integer studyGoalMinutesWeek) {
+                               Integer studyGoalMinutesWeek,
+                               Integer ollamaAutoMinutes) {
         User user = getById(userId);
-        if (firstName != null)           user.setFirstName(firstName.trim());
-        if (lastName != null)            user.setLastName(lastName.trim());
-        if (nativeLanguage != null)      user.setNativeLanguage(nativeLanguage);
-        if (languagesToLearn != null)    user.setLanguagesToLearn(languagesToLearn);
-        if (birthYear != null)           user.setBirthYear(birthYear);
+        if (firstName != null)            user.setFirstName(firstName.trim());
+        if (lastName != null)             user.setLastName(lastName.trim());
+        if (nativeLanguage != null)       user.setNativeLanguage(nativeLanguage);
+        if (languagesToLearn != null)     user.setLanguagesToLearn(languagesToLearn);
+        if (birthYear != null)            user.setBirthYear(birthYear);
         if (country != null)             user.setCountry(country);
-        if (learningGoals != null)       user.setLearningGoals(learningGoals);
-        if (learningLevel != null)       user.setLearningLevel(learningLevel);
+        if (learningGoals != null)        user.setLearningGoals(learningGoals);
+        if (learningLevel != null)        user.setLearningLevel(learningLevel);
         if (studyGoalMinutesWeek != null) user.setStudyGoalMinutesWeek(studyGoalMinutesWeek);
+        // ollamaAutoMinutes: -1=always off, 0=always on, N=auto. Always saved when present.
+        if (ollamaAutoMinutes != null)    user.setOllamaAutoMinutes(ollamaAutoMinutes);
         return userRepository.save(user);
     }
 

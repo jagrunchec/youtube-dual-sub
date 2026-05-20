@@ -2,7 +2,8 @@
    AUTH & USER SYSTEM
    ══════════════════════════════════════════════════════════════ */
 
-let currentUser = null;   // populated after successful login / checkAuth
+let currentUser        = null;   // populated after successful login / checkAuth
+let _ollamaAutoMinutes = 2;      // -1=always off, 0=always on, N=auto if video>N min (default 2)
 
 /* ── Check auth on load ─────────────────────────────────────── */
 async function checkAuth() {
@@ -11,6 +12,7 @@ async function checkAuth() {
         if (resp.ok) {
             currentUser = await resp.json();
             showApp();
+            _syncOllamaPreference();
         } else {
             showAuthOverlay();
         }
@@ -89,6 +91,7 @@ async function doLogin(e) {
         if (!resp.ok) { errEl.textContent = data.error; errEl.classList.remove('hidden'); return; }
         currentUser = data;
         showApp();
+        _syncOllamaPreference();
         await loadPreferences();
         loadHistory();
     } catch (err) {
@@ -149,6 +152,7 @@ async function doRegister(e) {
         // Auto-login after registration (mail disabled mode)
         currentUser = data;
         showApp();
+        _syncOllamaPreference();
         await loadPreferences();
         loadHistory();
     } catch (err) {
@@ -318,6 +322,31 @@ function showProfileModal() {
             </div>
         </div>
         <div class="profile-section">
+            <h3>// AMÉLIORATION OLLAMA PAR DÉFAUT</h3>
+            <p class="pf-hint">Détermine si la case « ✨ Amélioration Ollama » est cochée automatiquement en fonction de la durée de la vidéo.</p>
+            <div class="pf pf-ollama-radios">
+                <label class="pf-radio">
+                    <input type="radio" name="pfOllamaMode" value="off" ${u.ollamaAutoMinutes < 0 ? 'checked' : ''}>
+                    <span>Toujours désactivée</span>
+                </label>
+                <label class="pf-radio">
+                    <input type="radio" name="pfOllamaMode" value="on" ${u.ollamaAutoMinutes === 0 ? 'checked' : ''}>
+                    <span>Toujours activée</span>
+                </label>
+                <label class="pf-radio">
+                    <input type="radio" name="pfOllamaMode" value="auto" ${u.ollamaAutoMinutes > 0 ? 'checked' : ''}>
+                    <span>Automatique : activée pour les vidéos de plus de
+                        <input type="number" id="pfOllamaThreshold"
+                               value="${u.ollamaAutoMinutes > 0 ? u.ollamaAutoMinutes : 2}"
+                               min="1" max="120" style="width:3.5rem;text-align:center"
+                               onclick="document.querySelector('[name=pfOllamaMode][value=auto]').checked=true"
+                               oninput="document.querySelector('[name=pfOllamaMode][value=auto]').checked=true">
+                        minutes
+                    </span>
+                </label>
+            </div>
+        </div>
+        <div class="profile-section">
             <h3>// CHANGER LE MOT DE PASSE</h3>
             <div class="pf"><label>MOT DE PASSE ACTUEL</label>
                 <div class="pwd-wrap">
@@ -365,22 +394,31 @@ async function saveProfile() {
     const learnChecks = [...document.querySelectorAll('#profileModalBody .pf-checkboxes input[type=checkbox]')];
     const langChecks  = learnChecks.filter(c => Object.keys(LANG_LABELS).includes(c.value) && c.checked).map(c => c.value);
 
+    // Read Ollama preference
+    const ollamaMode = document.querySelector('input[name="pfOllamaMode"]:checked')?.value;
+    let ollamaAutoMinutes;
+    if (ollamaMode === 'off')  ollamaAutoMinutes = -1;
+    else if (ollamaMode === 'on') ollamaAutoMinutes = 0;
+    else ollamaAutoMinutes = Math.max(1, parseInt(document.getElementById('pfOllamaThreshold')?.value) || 2);
+
     try {
         const resp = await fetch('/api/users/me', {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                firstName:        document.getElementById('pfFirstName').value,
-                lastName:         document.getElementById('pfLastName').value,
-                nativeLanguage:   document.getElementById('pfNative').value,
-                languagesToLearn: JSON.stringify(langChecks),
-                birthYear:        document.getElementById('pfBirthYear').value || null,
-                country:          document.getElementById('pfCountry').value,
+                firstName:          document.getElementById('pfFirstName').value,
+                lastName:           document.getElementById('pfLastName').value,
+                nativeLanguage:     document.getElementById('pfNative').value,
+                languagesToLearn:   JSON.stringify(langChecks),
+                birthYear:          document.getElementById('pfBirthYear').value || null,
+                country:            document.getElementById('pfCountry').value,
+                ollamaAutoMinutes:  ollamaAutoMinutes,
             }),
         });
         const data = await resp.json();
         if (!resp.ok) { msgEl.textContent = data.error; msgEl.classList.remove('hidden'); return; }
         currentUser = data;
+        _syncOllamaPreference();
         renderUserBar();
         msgEl.textContent = '✓ Profil enregistré';
         msgEl.style.color = '#00ff88';
@@ -1422,6 +1460,8 @@ function showPlayer(videoId) {
 
     if (player) {
         player.loadVideoById(videoId);
+        // getDuration() for a newly-loaded video isn't accurate until CUED/PLAYING;
+        // use the onStateChange CUED event below to update the checkbox
         return;
     }
 
@@ -1431,7 +1471,10 @@ function showPlayer(videoId) {
         videoId,
         playerVars: { playsinline: 1, rel: 0, modestbranding: 1 },
         events: {
-            onReady:       () => { console.log('[DualSub] Player ready'); },
+            onReady: (e) => {
+                console.log('[DualSub] Player ready, duration:', e.target.getDuration(), 's');
+                _applyOllamaDefault(e.target.getDuration());
+            },
             onStateChange: onPlayerStateChange,
         }
     });
@@ -1440,6 +1483,10 @@ function showPlayer(videoId) {
 function onPlayerStateChange(ev) {
     const states = { '-1':'UNSTARTED', 0:'ENDED', 1:'PLAYING', 2:'PAUSED', 3:'BUFFERING', 5:'CUED' };
     console.log('[DualSub] Player state:', states[ev.data] || ev.data);
+    // State 5 = CUED: video fully loaded, getDuration() is now accurate
+    if (ev.data === 5) {
+        _applyOllamaDefault(ev.target.getDuration());
+    }
     if (ev.data === YT.PlayerState.ENDED) {
         stopSync();
     } else if (!syncInterval) {
@@ -2824,5 +2871,45 @@ function updateOllamaLabel() {
     const label = document.getElementById('ollamaLabel');
     if (!cb || !label) return;
     label.textContent = cb.checked ? '✨ Amélioration Ollama' : 'Amélioration Ollama';
+}
+
+/**
+ * Sets the Ollama checkbox state based on the current user preference
+ * and the actual video duration (in seconds, from the IFrame API).
+ *
+ * Rules (_ollamaAutoMinutes):
+ *   -1  → always unchecked
+ *    0  → always checked
+ *   N>0 → checked only when durationSec > N*60
+ *
+ * Call this whenever a new video is loaded in the player.
+ */
+function _applyOllamaDefault(durationSec) {
+    const cb = document.getElementById('ollamaCheck');
+    if (!cb) return;
+    let checked;
+    if (_ollamaAutoMinutes < 0) {
+        checked = false;                           // always off
+    } else if (_ollamaAutoMinutes === 0) {
+        checked = true;                            // always on
+    } else {
+        // Auto: on only if the video is longer than the threshold
+        checked = (typeof durationSec === 'number' && durationSec > 0)
+                  ? durationSec > _ollamaAutoMinutes * 60
+                  : false;  // duration unknown → safe default: off
+    }
+    cb.checked = checked;
+    updateOllamaLabel();
+}
+
+/** Sync _ollamaAutoMinutes from currentUser and re-apply to the checkbox. */
+function _syncOllamaPreference() {
+    if (currentUser && currentUser.ollamaAutoMinutes != null) {
+        _ollamaAutoMinutes = currentUser.ollamaAutoMinutes;
+    }
+    // If a video is already loaded, update the checkbox immediately
+    if (player && typeof player.getDuration === 'function') {
+        _applyOllamaDefault(player.getDuration());
+    }
 }
 

@@ -67,6 +67,16 @@ public class User {
     @Column(name = "study_goal_minutes_week")
     private Integer studyGoalMinutesWeek;
 
+    /**
+     * Ollama auto-enable threshold (minutes).
+     *  -1 = always off (never auto-check)
+     *   0 = always on  (always auto-check)
+     *   N = auto: check the box only for videos longer than N minutes
+     * Default 2 (set by Liquibase).
+     */
+    @Column(name = "ollama_auto_minutes")
+    private Integer ollamaAutoMinutes;
+
     @Column(name = "is_active", nullable = false)
     private boolean active = true;
 
@@ -133,6 +143,9 @@ public class User {
 
     public Integer getStudyGoalMinutesWeek()             { return studyGoalMinutesWeek; }
     public void setStudyGoalMinutesWeek(Integer v)       { this.studyGoalMinutesWeek = v; }
+
+    public Integer getOllamaAutoMinutes()                { return ollamaAutoMinutes; }
+    public void setOllamaAutoMinutes(Integer v)          { this.ollamaAutoMinutes = v; }
 
     public boolean isActive()                            { return active; }
     public void setActive(boolean active)                { this.active = active; }

@@ -1,0 +1,20 @@
+databaseChangeLog:
+
+  # ── ollama_auto_minutes on users ─────────────────────────────────────────────
+  # Controls when the Ollama improvement checkbox is checked by default:
+  #   -1 = always unchecked (off)
+  #    0 = always checked (on)
+  #    N > 0 = auto: checked only for videos longer than N minutes
+  # Default 2: auto-enable for videos longer than 2 minutes.
+  - changeSet:
+      id: 015-user-ollama-prefs
+      author: dualsub
+      changes:
+        - addColumn:
+            tableName: users
+            columns:
+              - column:
+                  name: ollama_auto_minutes
+                  type: INTEGER
+                  defaultValueNumeric: 2
+                  remarks: "Ollama auto-enable threshold in minutes. -1=always off, 0=always on, N=auto for videos longer than N min."
