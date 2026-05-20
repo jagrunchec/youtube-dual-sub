@@ -421,7 +421,11 @@
         <div class="dico-filter-row">
             <select class="dico-select" id="dicoSort" onchange="loadDictionary()">
                 <option value="date">↓ Date ajout</option>
+                <option value="freq">★ Fréquence</option>
                 <option value="alpha">A→Z Alphabétique</option>
+            </select>
+            <select class="dico-select" id="dicoTagFilter" onchange="loadDictionary()">
+                <option value="">🏷 Tous les tags</option>
             </select>
             <input class="dico-input" type="text" id="dicoVideoFilter"
                    placeholder="🎬 ID ou titre vidéo" oninput="loadDictionary()">
@@ -429,9 +433,6 @@
                    title="Mots ajoutés depuis..." onchange="loadDictionary()">
             <select class="dico-select" id="dicoLangFilter" onchange="loadDictionary()">
                 <option value="">🌐 Toutes les langues</option>
-            </select>
-            <select class="dico-select" id="dicoTagFilter" onchange="loadDictionary()">
-                <option value="">🏷 Tous les tags</option>
             </select>
         </div>
         <div class="dico-actions-row">
@@ -637,6 +638,6 @@
 </div>
 
 <script src="https://www.youtube.com/iframe_api"></script>
-<script src="app.js?v=35"></script>
+<script src="app.js?v=36"></script>
 </body>
 </html>

@@ -159,7 +159,7 @@ public class DictionaryService {
     /**
      * Return the user's dictionary, flattened to one row per entry.
      *
-     * @param sort     "alpha" | "date" (default: date desc)
+     * @param sort     "alpha" | "freq" | "date" (default: date desc)
      * @param videoId  filter to a specific video (null = all)
      * @param from     filter to entries created on or after this date (null = all)
      * @param lang     filter to a specific source language (null = all)
@@ -197,6 +197,14 @@ public class DictionaryService {
                 String wa = a.word == null ? "" : a.word;
                 String wb = b.word == null ? "" : b.word;
                 return wa.compareToIgnoreCase(wb);
+            });
+        } else if ("freq".equalsIgnoreCase(sort)) {
+            // Ascending rank (1 = most common first); words without rank go last.
+            dtos.sort((a, b) -> {
+                if (a.frequencyRank == null && b.frequencyRank == null) return 0;
+                if (a.frequencyRank == null) return  1;
+                if (b.frequencyRank == null) return -1;
+                return Integer.compare(a.frequencyRank, b.frequencyRank);
             });
         }
         return dtos;
