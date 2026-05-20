@@ -2288,9 +2288,9 @@ body.theme-light .ws.ws-active {
 .dico-freq::before,
 .wb-freq::before    { margin-right: .25em; font-style: normal; }
 .freq-red::before    { content: '★'; }   /* étoile       – top 1 000  */
-.freq-orange::before { content: '◆'; }   /* losange plein – top 2 000  */
+.freq-orange::before { content: '■'; }   /* carré plein   – top 2 000  */
 .freq-yellow::before { content: '▲'; }   /* triangle plein– top 3 000  */
-.freq-green::before  { content: '■'; }   /* carré plein   – top 5 000  */
+.freq-green::before  { content: '◆'; }   /* losange plein – top 5 000  */
 .freq-blue::before   { content: '●'; }   /* cercle plein  – top 8 000  */
 .freq-purple::before { content: '○'; }   /* cercle vide   – top 12 000 */
 .freq-muted::before  { content: '–'; }   /* tiret         – au-delà    */
