@@ -2084,10 +2084,10 @@ body.theme-light .ws.ws-peer-word-hl {
 .wb-close-btn:hover { color: rgba(255,255,255,.7); }
 
 .wb-freq {
-    font-size: .6rem; font-family: 'Exo 2', sans-serif;
-    color: rgba(180,220,255,.8); letter-spacing: .04em;
-    background: rgba(100,160,255,.12); border: 1px solid rgba(100,160,255,.25);
-    border-radius: 3px; padding: .05rem .35rem;
+    font-size: .68rem; font-family: 'Exo 2', sans-serif; font-weight: 600;
+    color: #ffc857; letter-spacing: .05em;
+    background: rgba(255,180,0,.15); border: 1px solid rgba(255,180,0,.45);
+    border-radius: 4px; padding: .1rem .45rem;
     pointer-events: none;
 }
 
@@ -2248,7 +2248,10 @@ body.theme-light .ws.ws-active {
     color: rgba(0,255,180,.7);
 }
 .dico-freq {
-    font-size: .65rem; color: rgba(180,220,255,.75);
+    font-size: .68rem; font-weight: 600;
+    color: #ffc857;
+    background: rgba(255,180,0,.13); border: 1px solid rgba(255,180,0,.4);
+    border-radius: 4px; padding: .05rem .4rem;
 }
 
 .dico-translation-cell {
