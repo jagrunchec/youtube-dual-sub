@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Exo+2:wght@300;400;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css?v=34">
+    <link rel="stylesheet" href="style.css?v=35">
     <!-- Twemoji: flag emoji rendered as SVG images (Windows desktop doesn't support flag emoji natively) -->
     <script src="https://cdn.jsdelivr.net/npm/twemoji@14.0.2/dist/twemoji.min.js" crossorigin="anonymous"></script>
 </head>
@@ -446,6 +446,16 @@
     <div class="dico-list" id="dicoList">
         <div class="dico-empty" id="dicoEmpty">Votre dictionnaire est vide.<br>Cliquez sur un mot pendant la lecture pour l'ajouter.</div>
     </div>
+    <div class="dico-pagination hidden" id="dicoPagination">
+        <button class="dico-pg-btn" id="dicoPgPrev" onclick="dicoPrevPage()" title="Page précédente">‹</button>
+        <span class="dico-pg-info" id="dicoPgInfo"></span>
+        <button class="dico-pg-btn" id="dicoPgNext" onclick="dicoNextPage()" title="Page suivante">›</button>
+        <select class="dico-pg-size" id="dicoPgSize" onchange="dicoSetPageSize(this.value)" title="Entrées par page">
+            <option value="10">10 / page</option>
+            <option value="20">20 / page</option>
+            <option value="50">50 / page</option>
+        </select>
+    </div>
 </div>
 
 <!-- ═══ HELP MODAL ═══ -->
@@ -638,6 +648,6 @@
 </div>
 
 <script src="https://www.youtube.com/iframe_api"></script>
-<script src="app.js?v=36"></script>
+<script src="app.js?v=37"></script>
 </body>
 </html>

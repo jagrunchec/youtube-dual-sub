@@ -656,6 +656,13 @@ let _wbWordId          = null;   // wordId returned by lookup
 let _wbSaved           = false;  // word already in dictionary
 let _wbPending         = false;  // translation request in progress
 
+// ── Dictionary pagination ────────────────────────────────────────────────────
+let _dicoAllItems  = [];   // full list returned by the server (current filters)
+let _dicoPage      = 0;    // current page index (0-based)
+let _dicoPageSize  = 20;   // entries per page — overridden by screen size on first open
+function _dicoDefaultPageSize() { return window.innerWidth < 640 ? 10 : 20; }
+// ─────────────────────────────────────────────────────────────────────────────
+
 const LANG_LABELS = {
     fr: 'Français', en: 'English', es: 'Español',
     it: 'Italiano', de: 'Deutsch', pl: 'Polski',
@@ -2348,7 +2355,13 @@ async function loadDictionary() {
         const resp = await fetch('/api/dictionary?' + params.toString());
         if (!resp.ok) throw new Error('HTTP ' + resp.status);
         const items = await resp.json();
-        renderDictionary(items);
+        _dicoAllItems = items;
+        _dicoPage     = 0;
+        // Auto-detect page size on first open (screen may have changed since init)
+        _dicoPageSize = _dicoDefaultPageSize();
+        const sizeEl = document.getElementById('dicoPgSize');
+        if (sizeEl) sizeEl.value = _dicoPageSize;
+        _renderDicoPage();
         populateDicoLangFilter(items);
         populateDicoTagFilter(items);
     } catch (e) {
@@ -2419,6 +2432,53 @@ function speakWbWord() {
     if (word && lang) speakWord(word, lang);
 }
 
+/** Render the current page slice and update the pagination bar. */
+function _renderDicoPage() {
+    const start     = _dicoPage * _dicoPageSize;
+    const pageItems = _dicoAllItems.slice(start, start + _dicoPageSize);
+    renderDictionary(pageItems, _dicoAllItems.length);
+    _renderDicoPagination();
+}
+
+/** Refresh prev/next state and the "X–Y / N mots" label. */
+function _renderDicoPagination() {
+    const total = _dicoAllItems.length;
+    const pg    = document.getElementById('dicoPagination');
+    if (!pg) return;
+
+    if (total <= _dicoPageSize) { pg.classList.add('hidden'); return; }
+    pg.classList.remove('hidden');
+
+    const totalPages = Math.ceil(total / _dicoPageSize);
+    const from = _dicoPage * _dicoPageSize + 1;
+    const to   = Math.min((_dicoPage + 1) * _dicoPageSize, total);
+
+    document.getElementById('dicoPgPrev').disabled = (_dicoPage === 0);
+    document.getElementById('dicoPgNext').disabled = (_dicoPage >= totalPages - 1);
+    document.getElementById('dicoPgInfo').textContent = `${from}–${to} / ${total} mots`;
+}
+
+function dicoPrevPage() {
+    if (_dicoPage > 0) {
+        _dicoPage--;
+        _renderDicoPage();
+        document.getElementById('dicoList').scrollTop = 0;
+    }
+}
+function dicoNextPage() {
+    if (_dicoPage < Math.ceil(_dicoAllItems.length / _dicoPageSize) - 1) {
+        _dicoPage++;
+        _renderDicoPage();
+        document.getElementById('dicoList').scrollTop = 0;
+    }
+}
+function dicoSetPageSize(n) {
+    _dicoPageSize = parseInt(n, 10);
+    _dicoPage = 0;
+    _renderDicoPage();
+    document.getElementById('dicoList').scrollTop = 0;
+}
+
 function freqClass(rank) {
     if (!rank) return '';
     if (rank <= 1000)  return 'freq-red';
@@ -2430,14 +2490,14 @@ function freqClass(rank) {
     return 'freq-muted';
 }
 
-function renderDictionary(items) {
+function renderDictionary(items, totalCount) {
     const list  = document.getElementById('dicoList');
     const empty = document.getElementById('dicoEmpty');
     const count = document.getElementById('dicoCount');
 
-    count.textContent = items.length
-        ? items.length + (items.length === 1 ? ' mot' : ' mots')
-        : '';
+    // Always show the TOTAL count (not the page slice length)
+    const total = totalCount !== undefined ? totalCount : items.length;
+    count.textContent = total ? total + (total === 1 ? ' mot' : ' mots') : '';
 
     if (!items.length) {
         list.querySelectorAll('.dico-row').forEach(r => r.remove());

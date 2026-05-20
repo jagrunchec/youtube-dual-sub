@@ -2446,14 +2446,65 @@ body.theme-light .dico-del-entry-btn, body.theme-light .dico-del-word-btn {
     border-color: rgba(204,34,0,.25); color: rgba(180,20,0,.7);
 }
 
+/* ── Dictionary pagination bar ──────────────────────────────── */
+.dico-pagination {
+    display: flex; align-items: center; justify-content: center; gap: .55rem;
+    padding: .55rem 1.5rem;
+    border-top: 1px solid rgba(255,255,255,.07);
+    flex-shrink: 0;
+    background: inherit;
+}
+.dico-pg-btn {
+    display: flex; align-items: center; justify-content: center;
+    width: 2.2rem; height: 2.2rem; min-width: 2.2rem;
+    font-size: 1.15rem; line-height: 1;
+    background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.13);
+    color: rgba(255,255,255,.8); border-radius: 5px;
+    cursor: pointer; transition: background .15s;
+    user-select: none;
+}
+.dico-pg-btn:hover:not(:disabled) { background: rgba(255,255,255,.13); }
+.dico-pg-btn:disabled { opacity: .28; cursor: default; }
+.dico-pg-info {
+    font-size: .72rem; font-family: 'Exo 2', sans-serif;
+    color: rgba(255,255,255,.5); min-width: 9rem; text-align: center;
+    white-space: nowrap;
+}
+.dico-pg-size {
+    font-size: .7rem; padding: .25rem .3rem;
+    background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.13);
+    color: rgba(255,255,255,.65); border-radius: 4px; cursor: pointer;
+}
+
 /* ── Dictionary panel — responsive ─────────────────────────── */
 @media (max-width: 600px) {
     .dico-filters { padding: .6rem .75rem; }
-    .dico-filter-row { gap: .4rem; }
+    /* Filters scroll horizontally instead of wrapping uncontrollably */
+    .dico-filter-row {
+        flex-wrap: nowrap; overflow-x: auto; gap: .4rem;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;          /* Firefox */
+    }
+    .dico-filter-row::-webkit-scrollbar { display: none; }
+    .dico-select, .dico-input { flex-shrink: 0; }
     .dico-list { padding: .5rem .75rem; }
     .dico-row { grid-template-columns: 1fr; gap: .4rem; }
     .dico-actions-cell { flex-direction: row; align-items: center; justify-content: flex-end; }
     .dico-notes-cell { min-width: 0; width: 100%; }
     .word-bar { padding: .45rem .75rem; }
     .wb-right { gap: .35rem; }
+    /* Larger tap targets for pagination on touch screens */
+    .dico-pg-btn { width: 2.75rem; height: 2.75rem; min-width: 2.75rem; font-size: 1.3rem; }
+    .dico-pagination { padding: .5rem .75rem; }
+    .dico-pg-info { min-width: 7rem; font-size: .68rem; }
+}
+
+/* Light theme */
+body.theme-light .dico-pg-btn {
+    background: rgba(0,102,204,.06); border-color: rgba(0,102,204,.18); color: #1a2a3a;
+}
+body.theme-light .dico-pg-btn:hover:not(:disabled) { background: rgba(0,102,204,.13); }
+body.theme-light .dico-pg-info { color: rgba(0,0,0,.45); }
+body.theme-light .dico-pg-size {
+    background: #fff; border-color: rgba(0,102,204,.18); color: #1a2a3a;
 }
