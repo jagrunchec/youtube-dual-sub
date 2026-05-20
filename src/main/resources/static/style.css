@@ -524,7 +524,51 @@ body {
 
 /* ── Blocks internes ───────────────────────────────────────── */
 .block { display: flex; flex-direction: column; gap: .75rem; }
-.action-block { gap: 1rem; }
+.action-block { gap: .75rem; }
+
+/* ── Ollama option checkbox ──────────────────────────────────── */
+.ollama-option {
+    display: inline-flex; align-items: center; gap: .55rem;
+    padding: .45rem .75rem; border-radius: 6px;
+    border: 1px solid rgba(0,255,180,.18);
+    background: rgba(0,255,180,.04);
+    cursor: pointer; user-select: none;
+    transition: border-color .2s, background .2s;
+    width: fit-content;
+}
+.ollama-option:hover { border-color: rgba(0,255,180,.35); background: rgba(0,255,180,.08); }
+.ollama-option input[type="checkbox"] { display: none; }
+.ollama-box {
+    width: 14px; height: 14px; flex-shrink: 0;
+    border: 1.5px solid rgba(0,255,180,.4); border-radius: 3px;
+    background: transparent;
+    transition: background .15s, border-color .15s;
+    position: relative;
+}
+.ollama-option input:checked ~ .ollama-box {
+    background: rgba(0,255,180,.85); border-color: #00ffb4;
+}
+.ollama-option input:checked ~ .ollama-box::after {
+    content: ''; position: absolute;
+    left: 3px; top: 0px; width: 5px; height: 9px;
+    border: 2px solid #06060e; border-top: none; border-left: none;
+    transform: rotate(45deg);
+}
+.ollama-label {
+    font-family: 'Exo 2', sans-serif; font-size: .75rem; letter-spacing: .04em;
+    color: rgba(0,255,180,.75);
+}
+.ollama-option:has(input:not(:checked)) { border-color: rgba(255,255,255,.1); background: rgba(255,255,255,.02); }
+.ollama-option:has(input:not(:checked)) .ollama-label { color: rgba(255,255,255,.35); }
+/* Light theme */
+body.theme-light .ollama-option { border-color: rgba(0,130,80,.25); background: rgba(0,130,80,.05); }
+body.theme-light .ollama-option:hover { border-color: rgba(0,130,80,.4); }
+body.theme-light .ollama-box { border-color: rgba(0,130,80,.4); }
+body.theme-light .ollama-option input:checked ~ .ollama-box { background: #00a060; border-color: #008050; }
+body.theme-light .ollama-option input:checked ~ .ollama-box::after { border-color: #fff; }
+body.theme-light .ollama-label { color: rgba(0,100,60,.8); }
+body.theme-light .ollama-option:has(input:not(:checked)) { border-color: rgba(0,0,0,.1); }
+body.theme-light .ollama-option:has(input:not(:checked)) .ollama-label { color: rgba(0,0,0,.35); }
 
 .block-label {
     font-family: 'Orbitron', monospace;
@@ -872,40 +916,6 @@ body {
     letter-spacing: .1em;
 }
 
-/* ── Ollama refinement badge ─────────────────────────────────── */
-.refine-badge {
-    display: flex; align-items: center; gap: .4rem;
-    width: 100%;
-    background: rgba(0,255,180,.06); border: 1px solid rgba(0,255,180,.2);
-    color: rgba(0,255,180,.75); font-family: 'Exo 2', sans-serif;
-    font-size: .68rem; letter-spacing: .04em;
-    padding: .3rem .75rem; border-radius: 4px; cursor: default;
-    margin-bottom: .4rem;
-    transition: background .2s, border-color .2s, color .2s;
-}
-.refine-badge.refine-ready {
-    cursor: pointer;
-    background: rgba(0,255,180,.1); border-color: rgba(0,255,180,.45);
-    color: #00ffb4;
-    animation: refine-pulse 2s ease-in-out infinite;
-}
-.refine-badge.refine-ready:hover {
-    background: rgba(0,255,180,.18); border-color: rgba(0,255,180,.7);
-}
-@keyframes refine-pulse {
-    0%, 100% { box-shadow: 0 0 0 0 rgba(0,255,180,.0); }
-    50%       { box-shadow: 0 0 8px 2px rgba(0,255,180,.25); }
-}
-.refine-spinner {
-    display: inline-block; animation: spin .9s linear infinite; font-style: normal;
-}
-@keyframes spin { to { transform: rotate(360deg); } }
-body.theme-light .refine-badge {
-    background: rgba(0,100,60,.05); border-color: rgba(0,130,80,.2); color: rgba(0,100,60,.7);
-}
-body.theme-light .refine-badge.refine-ready {
-    background: rgba(0,130,80,.08); border-color: rgba(0,130,80,.4); color: #006030;
-}
 
 .hud-track {
     display: flex;

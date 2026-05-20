@@ -145,6 +145,7 @@ public class VideoController {
             @RequestParam String videoUrl,
             @RequestParam String lang1,
             @RequestParam String lang2,
+            @RequestParam(defaultValue = "false") boolean ollama,
             Principal principal) {
 
         SseEmitter emitter = new SseEmitter(300_000L); // 5-minute timeout
@@ -281,23 +282,49 @@ public class VideoController {
                 executor.submit(() ->
                     persistenceService.recordWatch(videoId, effectiveLang1, lang2, userId));
 
+                // ── Optional Ollama refinement (inline, synchronous) ──────────
+                String sourceCode = finalDetCode != null ? finalDetCode : "auto";
+                final List<SubtitleEntry> finalOriginal = originalEntries;
+                List<SubtitleEntry> outOriginal  = originalEntries;
+                List<SubtitleEntry> outSubs1     = subtitles1;
+                List<SubtitleEntry> outSubs2     = subtitles2;
+
+                if (ollama && refinementService.isOllamaAvailable()) {
+                    // Step A: correct transcript (only for fresh fetches, not cache hits)
+                    if (cachedResult.isEmpty()) {
+                        progress.accept("{\"step\":\"ollama_transcript\"}");
+                        try {
+                            outOriginal = refinementService.getOllamaService()
+                                .correctTranscript(finalOriginal, sourceCode);
+                        } catch (Exception e) {
+                            System.err.println("[Ollama] Transcript correction failed: " + e.getMessage());
+                            outOriginal = finalOriginal;
+                        }
+                    }
+
+                    // Step B: refine translations
+                    progress.accept("{\"step\":\"ollama_translation\"}");
+                    try {
+                        if (!lang1Auto) {
+                            outSubs1 = refinementService.getOllamaService()
+                                .refine(outOriginal, subtitles1, sourceCode, lang1, null);
+                        }
+                        outSubs2 = refinementService.getOllamaService()
+                            .refine(outOriginal, subtitles2, sourceCode, lang2, null);
+                    } catch (Exception e) {
+                        System.err.println("[Ollama] Translation refinement failed: " + e.getMessage());
+                    }
+                }
+
                 // ── Send complete event ───────────────────────────────────────
                 ProcessResponse resp = new ProcessResponse();
                 resp.setVideoId(videoId);
-                resp.setSubtitles1(subtitles1);
-                resp.setSubtitles2(subtitles2);
+                resp.setSubtitles1(outSubs1);
+                resp.setSubtitles2(outSubs2);
                 resp.setLang1Label(lang1Label);
                 resp.setLang2Label(lang2Label);
-                // Language codes for the dictionary lookup (BCP-47)
                 resp.setLang1Code(lang1Auto ? (finalDetCode != null ? finalDetCode : "auto") : lang1);
                 resp.setLang2Code(lang2);
-
-                // ── Start background Ollama refinement (non-blocking) ─────────
-                String sourceCode = finalDetCode != null ? finalDetCode : "auto";
-                String jobId = refinementService.startRefinement(
-                    originalEntries, subtitles1, subtitles2,
-                    lang1Auto, lang1, lang2, sourceCode);
-                if (jobId != null) resp.setRefinementJobId(jobId);
 
                 emitter.send(SseEmitter.event().name("complete").data(
                     objectMapper.writeValueAsString(resp)));

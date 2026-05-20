@@ -43,6 +43,11 @@ public class RefinementService {
         this.ollamaService = ollamaService;
     }
 
+    // ── Helpers for inline use ────────────────────────────────────
+
+    public boolean isOllamaAvailable() { return ollamaService.isAvailable(); }
+    public OllamaService getOllamaService() { return ollamaService; }
+
     // ── Public API ────────────────────────────────────────────────
 
     /**

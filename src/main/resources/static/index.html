@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Exo+2:wght@300;400;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css?v=40">
+    <link rel="stylesheet" href="style.css?v=41">
     <!-- Twemoji: flag emoji rendered as SVG images (Windows desktop doesn't support flag emoji natively) -->
     <script src="https://cdn.jsdelivr.net/npm/twemoji@14.0.2/dist/twemoji.min.js" crossorigin="anonymous"></script>
 </head>
@@ -260,6 +260,11 @@
                 <span id="btnText">ANALYSER &amp; TRADUIRE</span>
                 <span id="btnSpinner" class="spinner hidden"></span>
             </button>
+            <label class="ollama-option" id="ollamaOption" title="Améliore la transcription et la traduction avec Ollama (mistral-nemo) — ajoute ~1-3 min selon la longueur de la vidéo">
+                <input type="checkbox" id="ollamaCheck" checked onchange="updateOllamaLabel()">
+                <span class="ollama-box"></span>
+                <span class="ollama-label" id="ollamaLabel">✨ Amélioration Ollama</span>
+            </label>
             <div id="errorBox" class="error-box hidden"></div>
         </div>
 
@@ -303,7 +308,6 @@
                         <span id="hudStatus" class="hud-status-text"></span>
                         <span id="hudTime"   class="hud-time-text"></span>
                     </div>
-                    <button class="refine-badge hidden" id="refineBadge" onclick="applyRefinement()"></button>
                     <div class="hud-track green-track">
                         <span class="hud-badge green-badge" id="lang1Badge">FR</span>
                         <span class="hud-text" id="subtitleText1">&nbsp;</span>
@@ -654,6 +658,6 @@
 </div>
 
 <script src="https://www.youtube.com/iframe_api"></script>
-<script src="app.js?v=42"></script>
+<script src="app.js?v=43"></script>
 </body>
 </html>

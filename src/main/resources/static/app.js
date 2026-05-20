@@ -622,8 +622,6 @@ let selectedLang1   = 'fr';
 let selectedLang2   = 'de';
 let subtitles1      = [];
 let subtitles2      = [];
-let _refinementJobId   = null;   // current Ollama refinement job
-let _refinementPollId  = null;   // setInterval handle for polling
 let player          = null;
 let syncInterval    = null;
 let immersionMode   = false;
@@ -694,12 +692,14 @@ const I18N = {
         btnBack:        '◄  RETOUR',
         errNoUrl:       'Veuillez saisir une URL YouTube.',
         errServer:      'Impossible de joindre le serveur. Vérifiez que Spring Boot tourne sur le port 8080.',
-        stepTranscript: 'Récupération du transcript',
-        stepPunctuation:'Restauration de la ponctuation',
-        stepSentences:  'Découpage en phrases',
-        stepTranslation:'Traduction',
-        stepSourceAuto: 'Piste 1 : langue source',
-        stepCached:     'Transcript en cache ⚡',
+        stepTranscript:       'Récupération du transcript',
+        stepPunctuation:      'Restauration de la ponctuation',
+        stepSentences:        'Découpage en phrases',
+        stepTranslation:      'Traduction',
+        stepSourceAuto:       'Piste 1 : langue source',
+        stepCached:           'Transcript en cache ⚡',
+        stepOllamaTranscript: '✨ Correction du transcript (Ollama)',
+        stepOllamaTranslation:'✨ Amélioration des traductions (Ollama)',
         immLabel:       'MODE IMMERSION',
         immHint:        'langue de la vidéo · ma langue',
         labelHistory:   '// HISTORIQUE',
@@ -719,12 +719,14 @@ const I18N = {
         btnBack:        '◄  BACK',
         errNoUrl:       'Please enter a YouTube URL.',
         errServer:      'Cannot reach the server. Make sure Spring Boot is running on port 8080.',
-        stepTranscript: 'Fetching transcript',
-        stepPunctuation:'Restoring punctuation',
-        stepSentences:  'Splitting into sentences',
-        stepTranslation:'Translation',
-        stepSourceAuto: 'Track 1: source language',
-        stepCached:     'Transcript from cache ⚡',
+        stepTranscript:       'Fetching transcript',
+        stepPunctuation:      'Restoring punctuation',
+        stepSentences:        'Splitting into sentences',
+        stepTranslation:      'Translation',
+        stepSourceAuto:       'Track 1: source language',
+        stepCached:           'Transcript from cache ⚡',
+        stepOllamaTranscript: '✨ Correcting transcript (Ollama)',
+        stepOllamaTranslation:'✨ Improving translations (Ollama)',
         immLabel:       'IMMERSION MODE',
         immHint:        'video language · my language',
         labelHistory:   '// HISTORY',
@@ -744,12 +746,14 @@ const I18N = {
         btnBack:        '◄  VOLVER',
         errNoUrl:       'Por favor, introduce una URL de YouTube.',
         errServer:      'No se puede conectar al servidor. Verifica que Spring Boot esté en el puerto 8080.',
-        stepTranscript: 'Obteniendo transcripción',
-        stepPunctuation:'Restaurando puntuación',
-        stepSentences:  'Dividiendo en frases',
-        stepTranslation:'Traducción',
-        stepSourceAuto: 'Pista 1: idioma fuente',
-        stepCached:     'Transcripción en caché ⚡',
+        stepTranscript:       'Obteniendo transcripción',
+        stepPunctuation:      'Restaurando puntuación',
+        stepSentences:        'Dividiendo en frases',
+        stepTranslation:      'Traducción',
+        stepSourceAuto:       'Pista 1: idioma fuente',
+        stepCached:           'Transcripción en caché ⚡',
+        stepOllamaTranscript: '✨ Corrigiendo transcripción (Ollama)',
+        stepOllamaTranslation:'✨ Mejorando traducciones (Ollama)',
         immLabel:       'MODO INMERSIÓN',
         immHint:        'idioma del vídeo · mi idioma',
         labelHistory:   '// HISTORIAL',
@@ -769,12 +773,14 @@ const I18N = {
         btnBack:        '◄  INDIETRO',
         errNoUrl:       'Inserisci un URL di YouTube.',
         errServer:      'Impossibile raggiungere il server. Verifica che Spring Boot sia sulla porta 8080.',
-        stepTranscript: 'Recupero trascrizione',
-        stepPunctuation:'Ripristino punteggiatura',
-        stepSentences:  'Suddivisione in frasi',
-        stepTranslation:'Traduzione',
-        stepSourceAuto: 'Traccia 1: lingua del video',
-        stepCached:     'Trascrizione dalla cache ⚡',
+        stepTranscript:       'Recupero trascrizione',
+        stepPunctuation:      'Ripristino punteggiatura',
+        stepSentences:        'Suddivisione in frasi',
+        stepTranslation:      'Traduzione',
+        stepSourceAuto:       'Traccia 1: lingua del video',
+        stepCached:           'Trascrizione dalla cache ⚡',
+        stepOllamaTranscript: '✨ Correzione trascrizione (Ollama)',
+        stepOllamaTranslation:'✨ Miglioramento traduzioni (Ollama)',
         immLabel:       'MODALITÀ IMMERSIONE',
         immHint:        'lingua sorgente · la mia lingua',
         labelHistory:   '// CRONOLOGIA',
@@ -794,12 +800,14 @@ const I18N = {
         btnBack:        '◄  ZURÜCK',
         errNoUrl:       'Bitte eine YouTube-URL eingeben.',
         errServer:      'Server nicht erreichbar. Prüfe, ob Spring Boot auf Port 8080 läuft.',
-        stepTranscript: 'Transkript abrufen',
-        stepPunctuation:'Zeichensetzung wiederherstellen',
-        stepSentences:  'In Sätze aufteilen',
-        stepTranslation:'Übersetzung',
-        stepSourceAuto: 'Spur 1: Sprache des Videos',
-        stepCached:     'Transkript aus Cache ⚡',
+        stepTranscript:       'Transkript abrufen',
+        stepPunctuation:      'Zeichensetzung wiederherstellen',
+        stepSentences:        'In Sätze aufteilen',
+        stepTranslation:      'Übersetzung',
+        stepSourceAuto:       'Spur 1: Sprache des Videos',
+        stepCached:           'Transkript aus Cache ⚡',
+        stepOllamaTranscript: '✨ Transkript korrigieren (Ollama)',
+        stepOllamaTranslation:'✨ Übersetzungen verbessern (Ollama)',
         immLabel:       'IMMERSIONSMODUS',
         immHint:        'Quellsprache · meine Sprache',
         labelHistory:   '// VERLAUF',
@@ -819,12 +827,14 @@ const I18N = {
         btnBack:        '◄  POWRÓT',
         errNoUrl:       'Proszę podać adres URL YouTube.',
         errServer:      'Nie można połączyć się z serwerem. Sprawdź, czy Spring Boot działa na porcie 8080.',
-        stepTranscript: 'Pobieranie transkrypcji',
-        stepPunctuation:'Przywracanie interpunkcji',
-        stepSentences:  'Podział na zdania',
-        stepTranslation:'Tłumaczenie',
-        stepSourceAuto: 'Ścieżka 1: język wideo',
-        stepCached:     'Transkrypcja z pamięci ⚡',
+        stepTranscript:       'Pobieranie transkrypcji',
+        stepPunctuation:      'Przywracanie interpunkcji',
+        stepSentences:        'Podział na zdania',
+        stepTranslation:      'Tłumaczenie',
+        stepSourceAuto:       'Ścieżka 1: język wideo',
+        stepCached:           'Transkrypcja z pamięci ⚡',
+        stepOllamaTranscript: '✨ Korekta transkrypcji (Ollama)',
+        stepOllamaTranslation:'✨ Poprawa tłumaczeń (Ollama)',
         immLabel:       'TRYB IMMERSJI',
         immHint:        'język źródłowy · mój język',
         labelHistory:   '// HISTORIA',
@@ -1188,11 +1198,13 @@ function escapeHtml(str) {
 
 /* ─── Pipeline steps (for SSE progress display) ─────────────── */
 const PIPELINE_STEPS = [
-    { key: 'transcript',   label: '', color: '#00d4ff' },   // cyan
-    { key: 'punctuation',  label: '', color: '#a855f7' },   // purple
-    { key: 'sentences',    label: '', color: '#ff7b00' },   // orange
-    { key: 'translation1', label: '', color: '#00ff88' },   // green
-    { key: 'translation2', label: '', color: '#00ff88' },   // green
+    { key: 'transcript',         label: '', color: '#00d4ff' },   // cyan
+    { key: 'punctuation',        label: '', color: '#a855f7' },   // purple
+    { key: 'sentences',          label: '', color: '#ff7b00' },   // orange
+    { key: 'translation1',       label: '', color: '#00ff88' },   // green
+    { key: 'translation2',       label: '', color: '#00ff88' },   // green
+    { key: 'ollama_transcript',  label: '', color: '#f59e0b' },   // amber
+    { key: 'ollama_translation', label: '', color: '#f59e0b' },   // amber
 ];
 
 function initProgress(lang1Label, lang2Label) {
@@ -1202,6 +1214,8 @@ function initProgress(lang1Label, lang2Label) {
     PIPELINE_STEPS[2].label = t.stepSentences;
     PIPELINE_STEPS[3].label = immersionMode ? t.stepSourceAuto : t.stepTranslation + ' ' + lang1Label;
     PIPELINE_STEPS[4].label = t.stepTranslation + ' ' + lang2Label;
+    PIPELINE_STEPS[5].label = t.stepOllamaTranscript;
+    PIPELINE_STEPS[6].label = t.stepOllamaTranslation;
 
     const panel = document.getElementById('progressPanel');
     panel.innerHTML = `
@@ -1276,7 +1290,8 @@ function processVideo() {
     const lang2Label = LANG_LABELS[effectiveLang2] || effectiveLang2.toUpperCase();
     initProgress(lang1Label, lang2Label);
 
-    const params = new URLSearchParams({ videoUrl: url, lang1: effectiveLang1, lang2: effectiveLang2 });
+    const ollamaEnabled = document.getElementById('ollamaCheck')?.checked ?? false;
+    const params = new URLSearchParams({ videoUrl: url, lang1: effectiveLang1, lang2: effectiveLang2, ollama: ollamaEnabled });
     const sse = new EventSource('/api/process/stream?' + params);
     let sseHandled = false;
 
@@ -1299,13 +1314,6 @@ function processVideo() {
         _activeLang1Code = data.lang1Code || selectedLang1;
         _activeLang2Code = data.lang2Code || selectedLang2;
         _lastSub1 = ''; _lastSub2 = ''; // reset subtitle cache
-
-        // ── Start Ollama refinement polling if a job was created ──
-        _stopRefinementPolling();
-        if (data.refinementJobId) {
-            _refinementJobId = data.refinementJobId;
-            _startRefinementPolling();
-        }
 
         console.log('[DualSub] Response received:');
         console.log('  videoId   :', data.videoId);
@@ -2804,86 +2812,17 @@ async function patchTags(wordId, tags) {
 }
 
 /* ══════════════════════════════════════════════════════════════
-   OLLAMA REFINEMENT
+   OLLAMA CHECKBOX
    ══════════════════════════════════════════════════════════════ */
 
-function _refineBadge() { return document.getElementById('refineBadge'); }
-
-function _startRefinementPolling() {
-    const badge = _refineBadge();
-    if (!badge) return;
-    badge.className = 'refine-badge';   // visible, not ready yet
-    badge.innerHTML = '<i class="refine-spinner">⟳</i> Amélioration Ollama en cours…';
-
-    _refinementPollId = setInterval(_pollRefinement, 4000);
-    _pollRefinement(); // immediate first check
-}
-
-function _stopRefinementPolling() {
-    if (_refinementPollId) { clearInterval(_refinementPollId); _refinementPollId = null; }
-    _refinementJobId = null;
-    const badge = _refineBadge();
-    if (badge) badge.className = 'refine-badge hidden';
-}
-
-async function _pollRefinement() {
-    if (!_refinementJobId) return;
-    try {
-        const resp = await fetch(`/api/refine/status?jobId=${_refinementJobId}`);
-        if (!resp.ok) { _stopRefinementPolling(); return; }
-        const data = await resp.json();
-
-        const badge = _refineBadge();
-        if (!badge) return;
-
-        if (data.status === 'DONE') {
-            clearInterval(_refinementPollId); _refinementPollId = null;
-            // Store the refined subtitles for later swap
-            window._refinedSubtitles1 = data.subtitles1 || [];
-            window._refinedSubtitles2 = data.subtitles2 || [];
-            badge.className = 'refine-badge refine-ready';
-            badge.innerHTML = '✨ Traduction améliorée disponible — cliquer pour activer';
-            console.log('[Ollama] Refinement ready:', window._refinedSubtitles1.length, 'entries');
-
-        } else if (data.status === 'FAILED') {
-            _stopRefinementPolling();
-            console.warn('[Ollama] Refinement failed:', data.error);
-
-        } else {
-            // IN_PROGRESS or PENDING — update progress
-            const pct = data.progress != null ? Math.round(data.progress * 100) : 0;
-            badge.innerHTML = `<i class="refine-spinner">⟳</i> Amélioration Ollama en cours… ${pct}%`;
-        }
-    } catch (e) {
-        console.warn('[Ollama] Poll error:', e);
-    }
-}
-
-function applyRefinement() {
-    if (!window._refinedSubtitles1 || !window._refinedSubtitles1.length) return;
-
-    subtitles1 = window._refinedSubtitles1;
-    subtitles2 = window._refinedSubtitles2;
-    window._refinedSubtitles1 = null;
-    window._refinedSubtitles2 = null;
-
-    // Sort and reset sync state so the new subtitles take effect immediately
-    subtitles1.sort((a, b) => a.startMs - b.startMs);
-    subtitles2.sort((a, b) => a.startMs - b.startMs);
-    _lastSub1 = ''; _lastSub2 = '';
-
-    // Refresh transcript panel if open
-    if (transcriptVisible) renderTranscript();
-
-    const badge = _refineBadge();
-    if (badge) {
-        badge.className = 'refine-badge';
-        badge.innerHTML = '✓ Traduction Ollama active';
-        badge.style.cursor = 'default';
-        // Auto-hide after 4 s
-        setTimeout(() => { if (badge) badge.className = 'refine-badge hidden'; }, 4000);
-    }
-
-    console.log('[Ollama] Refined subtitles applied.');
+/**
+ * Called by the checkbox's onchange.  Keeps the visible label in sync
+ * with the checked state so the user gets clear visual feedback.
+ */
+function updateOllamaLabel() {
+    const cb    = document.getElementById('ollamaCheck');
+    const label = document.getElementById('ollamaLabel');
+    if (!cb || !label) return;
+    label.textContent = cb.checked ? '✨ Amélioration Ollama' : 'Amélioration Ollama';
 }
 

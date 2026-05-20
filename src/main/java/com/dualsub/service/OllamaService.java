@@ -36,6 +36,63 @@ public class OllamaService {
         .connectTimeout(Duration.ofSeconds(5)).build();
     private final ObjectMapper objectMapper = new ObjectMapper();
 
+    // ── Transcript correction ─────────────────────────────────────
+
+    /**
+     * Corrects obvious ASR transcription errors (proper nouns, technical terms, numbers).
+     * Uses a very low temperature to avoid hallucinations.
+     */
+    public List<SubtitleEntry> correctTranscript(List<SubtitleEntry> entries, String sourceCode) {
+        if (entries == null || entries.isEmpty()) return entries;
+        List<SubtitleEntry> result = new ArrayList<>(entries);
+        int total = entries.size();
+
+        for (int i = 0; i < total; i += BATCH_SIZE) {
+            int end = Math.min(i + BATCH_SIZE, total);
+            try {
+                List<String> corrected = correctBatch(entries.subList(i, end), sourceCode);
+                for (int j = 0; j < corrected.size() && (i + j) < total; j++) {
+                    String text = corrected.get(j).trim();
+                    if (!text.isEmpty()) result.set(i + j, copyWith(entries.get(i + j), text));
+                }
+            } catch (Exception e) {
+                System.err.println("[Ollama] Transcript correction batch " + i + " failed: " + e.getMessage());
+            }
+        }
+        return result;
+    }
+
+    private List<String> correctBatch(List<SubtitleEntry> batch, String sourceCode) throws Exception {
+        String lang = sourceCode != null ? sourceCode.toUpperCase() : "?";
+        StringBuilder prompt = new StringBuilder();
+        prompt.append("Corrige les erreurs de transcription automatique (ASR) dans ces phrases en ").append(lang).append(".\n")
+              .append("Corrige UNIQUEMENT les mots clairement mal transcrits : noms propres, termes techniques, chiffres.\n")
+              .append("NE CHANGE PAS le contenu ni le sens. Si une phrase est correcte, retourne-la telle quelle.\n")
+              .append("Format : N: texte corrigé (une ligne par entrée, aucune explication).\n\n");
+        for (int i = 0; i < batch.size(); i++) {
+            prompt.append(i + 1).append(": ").append(batch.get(i).getText()).append("\n");
+        }
+
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("model",   model);
+        body.put("prompt",  prompt.toString());
+        body.put("stream",  false);
+        body.put("options", Map.of("temperature", 0.05, "num_predict", 512));
+
+        String jsonBody = objectMapper.writeValueAsString(body);
+        HttpRequest req = HttpRequest.newBuilder()
+            .uri(URI.create(ollamaUrl + "/api/generate"))
+            .timeout(TIMEOUT)
+            .header("Content-Type", "application/json")
+            .POST(HttpRequest.BodyPublishers.ofString(jsonBody))
+            .build();
+
+        HttpResponse<String> resp = httpClient.send(req, HttpResponse.BodyHandlers.ofString());
+        String responseText = objectMapper.readTree(resp.body()).path("response").asText();
+        List<String> parsed = parseNumberedLines(responseText, batch.size());
+        return parsed.size() >= batch.size() / 2 ? parsed : Collections.emptyList();
+    }
+
     // ── Availability check ────────────────────────────────────────
 
     public boolean isAvailable() {
