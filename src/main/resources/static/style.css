@@ -561,14 +561,14 @@ body {
 .ollama-option:has(input:not(:checked)) { border-color: rgba(255,255,255,.1); background: rgba(255,255,255,.02); }
 .ollama-option:has(input:not(:checked)) .ollama-label { color: rgba(255,255,255,.35); }
 /* Light theme */
-body.theme-light .ollama-option { border-color: rgba(0,130,80,.25); background: rgba(0,130,80,.05); }
-body.theme-light .ollama-option:hover { border-color: rgba(0,130,80,.4); }
-body.theme-light .ollama-box { border-color: rgba(0,130,80,.4); }
+body.theme-light .ollama-option { border-color: #00a060; background: rgba(0,160,96,.08); }
+body.theme-light .ollama-option:hover { border-color: #008050; background: rgba(0,160,96,.15); }
+body.theme-light .ollama-box { border-color: #00a060; }
 body.theme-light .ollama-option input:checked ~ .ollama-box { background: #00a060; border-color: #008050; }
 body.theme-light .ollama-option input:checked ~ .ollama-box::after { border-color: #fff; }
-body.theme-light .ollama-label { color: rgba(0,100,60,.8); }
-body.theme-light .ollama-option:has(input:not(:checked)) { border-color: rgba(0,0,0,.1); }
-body.theme-light .ollama-option:has(input:not(:checked)) .ollama-label { color: rgba(0,0,0,.35); }
+body.theme-light .ollama-label { color: #006030; font-weight: 600; }
+body.theme-light .ollama-option:has(input:not(:checked)) { border-color: rgba(0,0,0,.2); background: rgba(0,0,0,.03); }
+body.theme-light .ollama-option:has(input:not(:checked)) .ollama-label { color: rgba(0,0,0,.5); font-weight: 400; }
 
 .block-label {
     font-family: 'Orbitron', monospace;
