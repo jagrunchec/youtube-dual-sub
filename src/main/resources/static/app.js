@@ -1389,6 +1389,10 @@ function showPlayer(videoId) {
     // Position memory: offer resume if we have a saved position > 10 s
     _pendingResume = getSavedPosition(videoId);
     startPositionSaving();
+    if (_pendingResume !== null && _pendingResume > 10000) {
+        showResumeToast(_pendingResume);
+        _pendingResume = null;
+    }
 
     startSync();
 
@@ -1420,12 +1424,6 @@ function onPlayerStateChange(ev) {
     // Re-apply speed whenever playback (re)starts — YT resets rate on new video
     if (ev.data === YT.PlayerState.PLAYING && currentSpeed !== 1) {
         player.setPlaybackRate(currentSpeed);
-    }
-    // Offer to resume saved position on first PLAYING event
-    if (ev.data === YT.PlayerState.PLAYING && _pendingResume !== null) {
-        const posMs = _pendingResume;
-        _pendingResume = null;
-        if (posMs > 10000) showResumeToast(posMs);
     }
     // AUTO-PAUSE: if the user manually resumes via the YouTube player, clear the
     // paused state so subtitle sync and future auto-pauses work normally again.
