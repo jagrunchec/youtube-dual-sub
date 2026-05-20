@@ -1,0 +1,122 @@
+databaseChangeLog:
+
+  # ── dictionary_words ──────────────────────────────────────────────────────────
+  # One row per (user, word, source_language) — the canonical form of a known word.
+  - changeSet:
+      id: 011-dictionary-words
+      author: dualsub
+      changes:
+        - createTable:
+            tableName: dictionary_words
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: user_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_dw_user
+                    references: users(id)
+              - column:
+                  name: word
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: source_language
+                  type: VARCHAR(10)
+                  constraints:
+                    nullable: false
+              # Frequency rank in the source language (1 = most common).
+              # Lower = more important to learn. Populated on demand.
+              - column:
+                  name: frequency_rank
+                  type: INT
+              - column:
+                  name: created_at
+                  type: TIMESTAMP
+                  constraints:
+                    nullable: false
+        - addUniqueConstraint:
+            tableName: dictionary_words
+            columnNames: user_id, word, source_language
+            constraintName: uq_dw_user_word_lang
+
+  # ── dictionary_entries ────────────────────────────────────────────────────────
+  # One row per (user, word, video) — context in which the word was encountered.
+  - changeSet:
+      id: 012-dictionary-entries
+      author: dualsub
+      changes:
+        - createTable:
+            tableName: dictionary_entries
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: word_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_de_word
+                    references: dictionary_words(id)
+              - column:
+                  name: user_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_de_user
+                    references: users(id)
+              - column:
+                  name: video_id
+                  type: VARCHAR(30)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: video_title
+                  type: VARCHAR(500)
+              # Translation of the word in target_language
+              - column:
+                  name: translation
+                  type: TEXT
+              - column:
+                  name: target_language
+                  type: VARCHAR(10)
+                  constraints:
+                    nullable: false
+              # The full sentence where the word appeared (source track)
+              - column:
+                  name: source_sentence
+                  type: TEXT
+              # The translated sentence (target track)
+              - column:
+                  name: translated_sentence
+                  type: TEXT
+              # Position in the video when the word was clicked (ms)
+              - column:
+                  name: video_timing_ms
+                  type: BIGINT
+              # User's personal note about this word/context
+              - column:
+                  name: notes
+                  type: TEXT
+              - column:
+                  name: created_at
+                  type: TIMESTAMP
+                  constraints:
+                    nullable: false
+        - addUniqueConstraint:
+            tableName: dictionary_entries
+            columnNames: user_id, word_id, video_id
+            constraintName: uq_de_user_word_video

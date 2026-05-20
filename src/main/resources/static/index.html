@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Exo+2:wght@300;400;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css?v=22">
+    <link rel="stylesheet" href="style.css?v=23">
     <!-- Twemoji: flag emoji rendered as SVG images (Windows desktop doesn't support flag emoji natively) -->
     <script src="https://cdn.jsdelivr.net/npm/twemoji@14.0.2/dist/twemoji.min.js" crossorigin="anonymous"></script>
 </head>
@@ -169,6 +169,7 @@
         <button class="ub-btn" id="btnAdminPanel" onclick="showAdminPanel()" style="display:none">⚙ <span class="ub-label">ADMIN</span></button>
         <button class="ub-btn" id="btnTheme" onclick="toggleTheme()">☀ <span class="ub-label">THÈME</span></button>
         <button class="ub-help-btn" onclick="showHelp()" title="Aide &amp; raccourcis clavier">?</button>
+        <button class="ub-btn" id="btnDico" onclick="openDicoPanel()">📚 <span class="ub-label">DICO</span></button>
         <button class="ub-btn" onclick="showProfileModal()">👤 <span class="ub-label">PROFIL</span></button>
         <button class="ub-btn ub-btn-logout" onclick="doLogout()">⏻ <span class="ub-label">DÉCONNEXION</span></button>
     </div>
@@ -314,6 +315,21 @@
                 </div>
             </div>
 
+            <!-- ═══ WORD LOOKUP BAR ═══ -->
+            <div class="word-bar hidden" id="wordBar">
+                <div class="wb-left">
+                    <span class="wb-word" id="wbWord"></span>
+                    <span class="wb-arrow">→</span>
+                    <span class="wb-spinner hidden" id="wbSpinner">⟳</span>
+                    <span class="wb-result" id="wbResult"></span>
+                </div>
+                <div class="wb-right">
+                    <button class="wb-save-btn hidden" id="wbSaveBtn" onclick="saveWordToDico()">📚 SAUVEGARDER</button>
+                    <span class="wb-saved hidden" id="wbSaved">✓ DANS LE DICO</span>
+                    <button class="wb-close-btn" onclick="closeWordBar()">✕</button>
+                </div>
+            </div>
+
             <!-- ═══ AUTO-PAUSE RESUME BAR (below subtitles, above toolbar) ═══ -->
             <div class="focus-resume-bar hidden" id="focusOverlay" onclick="resumeFromFocus()">
                 <span class="fo-icon">&#9654;</span>
@@ -390,6 +406,39 @@
         <button class="admin-tab"        id="adminTabStats"   onclick="showAdminTab('stats')">STATISTIQUES</button>
     </div>
     <div class="admin-content" id="adminContent"></div>
+</div>
+
+<!-- ═══ DICTIONARY PANEL ═══ -->
+<div class="dico-panel hidden" id="dicoPanel">
+    <div class="dico-header">
+        <span class="dico-title">📚 <span id="dicoPanelTitle">MON DICTIONNAIRE</span></span>
+        <button class="dico-close" onclick="closeDicoPanel()">✕ FERMER</button>
+    </div>
+    <div class="dico-filters">
+        <div class="dico-filter-row">
+            <select class="dico-select" id="dicoSort" onchange="loadDictionary()">
+                <option value="date">↓ Date ajout</option>
+                <option value="alpha">A→Z Alphabétique</option>
+            </select>
+            <input class="dico-input" type="text" id="dicoVideoFilter"
+                   placeholder="🎬 ID ou titre vidéo" oninput="loadDictionary()">
+            <input class="dico-input dico-date-input" type="date" id="dicoDateFrom"
+                   title="Mots ajoutés depuis..." onchange="loadDictionary()">
+            <select class="dico-select" id="dicoLangFilter" onchange="loadDictionary()">
+                <option value="">🌐 Toutes les langues</option>
+            </select>
+        </div>
+        <div class="dico-actions-row">
+            <span class="dico-count" id="dicoCount"></span>
+            <div class="dico-bulk-btns">
+                <button class="dico-bulk-btn" id="dicoBulkVideo" onclick="confirmDeleteDicoByVideo()" style="display:none">🗑 Supprimer cette vidéo</button>
+                <button class="dico-bulk-btn dico-bulk-danger" onclick="confirmDeleteAllDico()">🗑 Tout supprimer</button>
+            </div>
+        </div>
+    </div>
+    <div class="dico-list" id="dicoList">
+        <div class="dico-empty" id="dicoEmpty">Votre dictionnaire est vide.<br>Cliquez sur un mot pendant la lecture pour l'ajouter.</div>
+    </div>
 </div>
 
 <!-- ═══ HELP MODAL ═══ -->
@@ -532,6 +581,6 @@
 </div>
 
 <script src="https://www.youtube.com/iframe_api"></script>
-<script src="app.js?v=21"></script>
+<script src="app.js?v=22"></script>
 </body>
 </html>

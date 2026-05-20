@@ -8,6 +8,12 @@ public class ProcessResponse {
     private List<SubtitleEntry> subtitles2;
     private String lang1Label;
     private String lang2Label;
+    /** BCP-47 code actually used for track 1 (e.g. "fr", "en"). For immersion mode: the video's detected language code. */
+    private String lang1Code;
+    /** BCP-47 code used for track 2 (e.g. "de"). */
+    private String lang2Code;
+    /** Video title fetched at processing time (may be null). */
+    private String videoTitle;
 
     public String getVideoId() { return videoId; }
     public void setVideoId(String videoId) { this.videoId = videoId; }
@@ -24,4 +30,12 @@ public class ProcessResponse {
     public String getLang2Label() { return lang2Label; }
     public void setLang2Label(String lang2Label) { this.lang2Label = lang2Label; }
 
+    public String getLang1Code() { return lang1Code; }
+    public void setLang1Code(String lang1Code) { this.lang1Code = lang1Code; }
+
+    public String getLang2Code() { return lang2Code; }
+    public void setLang2Code(String lang2Code) { this.lang2Code = lang2Code; }
+
+    public String getVideoTitle() { return videoTitle; }
+    public void setVideoTitle(String videoTitle) { this.videoTitle = videoTitle; }
 }

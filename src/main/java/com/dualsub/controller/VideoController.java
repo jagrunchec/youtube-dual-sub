@@ -284,6 +284,9 @@ public class VideoController {
                 resp.setSubtitles2(subtitles2);
                 resp.setLang1Label(lang1Label);
                 resp.setLang2Label(lang2Label);
+                // Language codes for the dictionary lookup (BCP-47)
+                resp.setLang1Code(lang1Auto ? (finalDetCode != null ? finalDetCode : "auto") : lang1);
+                resp.setLang2Code(lang2);
 
                 emitter.send(SseEmitter.event().name("complete").data(
                     objectMapper.writeValueAsString(resp)));

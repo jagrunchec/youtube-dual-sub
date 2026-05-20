@@ -643,6 +643,19 @@ let searchMatches      = [];     // transcript row indices matching current sear
 let searchIndex        = -1;     // which match is active
 let currentTheme       = localStorage.getItem('dualsubTheme') || 'light';
 
+// ── Dictionary state ─────────────────────────────────────────
+let _activeLang1Code   = '';     // BCP-47 code of track 1 (set from ProcessResponse)
+let _activeLang2Code   = '';     // BCP-47 code of track 2
+let _currentVideoTitle = null;   // video title (fetched from history or null)
+let _lastSub1          = '';     // cached text for change detection
+let _lastSub2          = '';
+let _wbWord            = null;   // word currently shown in word bar
+let _wbTrack           = 0;      // track (1 or 2) the word came from
+let _wbEntryId         = null;   // entryId returned by lookup (if saved)
+let _wbWordId          = null;   // wordId returned by lookup
+let _wbSaved           = false;  // word already in dictionary
+let _wbPending         = false;  // translation request in progress
+
 const LANG_LABELS = {
     fr: 'Français', en: 'English', es: 'Español',
     it: 'Italiano', de: 'Deutsch', pl: 'Polski',
@@ -968,6 +981,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         loadHistory();
         if (bookmarkUrl) processVideo();
     }
+
+    // ── Word click delegation on HUD subtitle spans ──────────
+    document.getElementById('subtitleText1').addEventListener('click', e => {
+        if (e.target.classList.contains('ws')) handleWordClick(e.target);
+    });
+    document.getElementById('subtitleText2').addEventListener('click', e => {
+        if (e.target.classList.contains('ws')) handleWordClick(e.target);
+    });
 });
 
 /* ─── Language card selection ───────────────────────────────── */
@@ -1260,10 +1281,15 @@ function processVideo() {
         subtitles1 = data.subtitles1 || [];
         subtitles2 = data.subtitles2 || [];
 
+        // Store lang codes for dictionary lookups
+        _activeLang1Code = data.lang1Code || selectedLang1;
+        _activeLang2Code = data.lang2Code || selectedLang2;
+        _lastSub1 = ''; _lastSub2 = ''; // reset subtitle cache
+
         console.log('[DualSub] Response received:');
         console.log('  videoId   :', data.videoId);
-        console.log('  lang1     :', data.lang1Label, '→', subtitles1.length, 'subtitles');
-        console.log('  lang2     :', data.lang2Label, '→', subtitles2.length, 'subtitles');
+        console.log('  lang1     :', data.lang1Label, '('+_activeLang1Code+')', '→', subtitles1.length, 'subtitles');
+        console.log('  lang2     :', data.lang2Label, '('+_activeLang2Code+')', '→', subtitles2.length, 'subtitles');
 
         const label1 = data.lang1Label || lang1Label;
         const label2 = data.lang2Label || lang2Label;
@@ -1421,8 +1447,10 @@ function syncSubtitles() {
         player.seekTo(loopStart / 1000, true);
         return;
     }
-    document.getElementById('subtitleText1').textContent = find(subtitles1, nowMs);
-    document.getElementById('subtitleText2').textContent = find(subtitles2, nowMs);
+    const t1 = find(subtitles1, nowMs);
+    const t2 = find(subtitles2, nowMs);
+    if (t1 !== _lastSub1) { _lastSub1 = t1; document.getElementById('subtitleText1').innerHTML = wrapWords(t1, 1); }
+    if (t2 !== _lastSub2) { _lastSub2 = t2; document.getElementById('subtitleText2').innerHTML = wrapWords(t2, 2); }
     document.getElementById('hudTime').textContent = formatMs(nowMs);
     syncTranscriptScroll(nowMs);
     if (focusMode && !focusPaused) checkFocusPause(nowMs);
@@ -1599,8 +1627,10 @@ function resetApp() {
         document.getElementById('transcriptSearch').value = '';
         document.getElementById('searchCount').textContent = '';
     }
-    document.getElementById('subtitleText1').textContent = '';
-    document.getElementById('subtitleText2').textContent = '';
+    _lastSub1 = ''; _lastSub2 = '';
+    document.getElementById('subtitleText1').innerHTML = '';
+    document.getElementById('subtitleText2').innerHTML = '';
+    closeWordBar();
     document.getElementById('hudStatus').textContent = '';
     document.getElementById('hudTime').textContent = '';
 
@@ -2009,4 +2039,372 @@ function renderStatsSection(stats) {
         <div class="stats-chart-label">// ACTIVITÉ (8 DERNIÈRES SEMAINES)</div>
         <div class="stats-week-chart">${bars}</div>
         ${pairs}`;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   PERSONAL DICTIONARY
+   ══════════════════════════════════════════════════════════════ */
+
+/* ── Word wrapping ───────────────────────────────────────────── */
+/**
+ * Splits a subtitle text into clickable word spans.
+ * Whitespace tokens pass through unchanged; very short or pure-punctuation
+ * tokens are escaped but not wrapped (no useful lookup target).
+ */
+function wrapWords(text, track) {
+    if (!text) return '&nbsp;';
+    return text.split(/(\s+)/).map(token => {
+        if (!token || /^\s+$/.test(token)) return token;
+        // Strip leading/trailing punctuation to get the lookup form
+        const clean = token.replace(
+            /^[«»""''"()\[\].,;:!?—–‑\-…«»]+|[«»""''"()\[\].,;:!?—–‑\-…«»]+$/g, '');
+        if (!clean || clean.length < 2) return esc(token);
+        return `<span class="ws" data-word="${esc(clean.toLowerCase())}" data-track="${track}">${esc(token)}</span>`;
+    }).join('');
+}
+
+/* ── Word bar ────────────────────────────────────────────────── */
+
+function handleWordClick(el) {
+    const word  = el.dataset.word;
+    const track = parseInt(el.dataset.track, 10);
+    if (!word || !_currentVideoId) return;
+
+    // Visual feedback: briefly highlight clicked word
+    document.querySelectorAll('.ws.ws-active').forEach(s => s.classList.remove('ws-active'));
+    el.classList.add('ws-active');
+    setTimeout(() => el.classList.remove('ws-active'), 1500);
+
+    _wbWord    = word;
+    _wbTrack   = track;
+    _wbSaved   = false;
+    _wbEntryId = null;
+    _wbWordId  = null;
+    _wbPending = true;
+
+    const bar = document.getElementById('wordBar');
+    document.getElementById('wbWord').textContent = word;
+    document.getElementById('wbResult').textContent = '';
+    document.getElementById('wbSpinner').classList.remove('hidden');
+    document.getElementById('wbSaveBtn').classList.remove('hidden');
+    document.getElementById('wbSaveBtn').disabled = true;
+    document.getElementById('wbSaved').classList.add('hidden');
+    bar.classList.remove('hidden');
+
+    // Fetch translation (non-destructive — does not save to dictionary)
+    const sourceLang = track === 1 ? _activeLang1Code : _activeLang2Code;
+    const targetLang = track === 1 ? _activeLang2Code : _activeLang1Code;
+    if (!sourceLang || !targetLang || sourceLang === 'auto') {
+        document.getElementById('wbSpinner').classList.add('hidden');
+        document.getElementById('wbResult').textContent = '—';
+        return;
+    }
+
+    fetch(`/api/dictionary/translate?word=${encodeURIComponent(word)}&from=${sourceLang}&to=${targetLang}`)
+        .then(r => r.ok ? r.json() : Promise.reject(r.status))
+        .then(data => {
+            _wbPending = false;
+            document.getElementById('wbSpinner').classList.add('hidden');
+            document.getElementById('wbResult').textContent = data.translation || word;
+            document.getElementById('wbSaveBtn').disabled = false;
+        })
+        .catch(err => {
+            _wbPending = false;
+            document.getElementById('wbSpinner').classList.add('hidden');
+            document.getElementById('wbResult').textContent = '—';
+            console.warn('[Dictionary] Translate error:', err);
+        });
+}
+
+function closeWordBar() {
+    const bar = document.getElementById('wordBar');
+    if (bar) bar.classList.add('hidden');
+    _wbWord = null;
+}
+
+/**
+ * Called when the user clicks "SAUVEGARDER".
+ * Calls the lookup endpoint which persists the word + context to the dictionary.
+ */
+async function saveWordToDico() {
+    if (!_wbWord || !_currentVideoId) return;
+    const saveBtn  = document.getElementById('wbSaveBtn');
+    const savedMsg = document.getElementById('wbSaved');
+    saveBtn.disabled = true;
+
+    const track      = _wbTrack;
+    const sourceLang = track === 1 ? _activeLang1Code : _activeLang2Code;
+    const targetLang = track === 1 ? _activeLang2Code : _activeLang1Code;
+    const sub1El     = document.getElementById('subtitleText1');
+    const sub2El     = document.getElementById('subtitleText2');
+    const sourceSentence     = track === 1 ? sub1El.textContent : sub2El.textContent;
+    const translatedSentence = track === 1 ? sub2El.textContent : sub1El.textContent;
+
+    let timingMs = null;
+    if (player && typeof player.getCurrentTime === 'function') {
+        timingMs = Math.round(player.getCurrentTime() * 1000);
+    }
+
+    // Try to find the video title from the history panel
+    if (!_currentVideoTitle) {
+        const histEl = document.querySelector(`#historyList [data-vid="${_currentVideoId}"] .hist-title`);
+        if (histEl) _currentVideoTitle = histEl.textContent;
+    }
+
+    try {
+        const resp = await fetch('/api/dictionary/lookup', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                word: _wbWord,
+                sourceLang, targetLang,
+                videoId: _currentVideoId,
+                videoTitle: _currentVideoTitle,
+                sourceSentence, translatedSentence,
+                timingMs,
+            }),
+        });
+        if (!resp.ok) throw new Error('HTTP ' + resp.status);
+        const data = await resp.json();
+        _wbEntryId = data.entryId;
+        _wbWordId  = data.wordId;
+        _wbSaved   = true;
+        saveBtn.classList.add('hidden');
+        savedMsg.classList.remove('hidden');
+    } catch (e) {
+        console.error('[Dictionary] Save error:', e);
+        saveBtn.disabled = false;
+    }
+}
+
+/* ── DICO panel ──────────────────────────────────────────────── */
+
+function openDicoPanel() {
+    document.getElementById('dicoPanel').classList.remove('hidden');
+    loadDictionary();
+}
+
+function closeDicoPanel() {
+    document.getElementById('dicoPanel').classList.add('hidden');
+}
+
+async function loadDictionary() {
+    const sort    = document.getElementById('dicoSort').value;
+    const videoF  = document.getElementById('dicoVideoFilter').value.trim();
+    const dateF   = document.getElementById('dicoDateFrom').value;
+    const langF   = document.getElementById('dicoLangFilter').value;
+
+    const params = new URLSearchParams({ sort });
+    if (videoF) params.set('videoId', videoF);
+    if (dateF)  params.set('from', dateF);
+    if (langF)  params.set('lang', langF);
+
+    // Show "bulk by video" button when filtering by a specific video
+    const bulkVideo = document.getElementById('dicoBulkVideo');
+    if (bulkVideo) bulkVideo.style.display = videoF ? '' : 'none';
+
+    try {
+        const resp = await fetch('/api/dictionary?' + params.toString());
+        if (!resp.ok) throw new Error('HTTP ' + resp.status);
+        const items = await resp.json();
+        renderDictionary(items);
+        // Populate language filter options from results
+        populateDicoLangFilter(items);
+    } catch (e) {
+        console.error('[Dictionary] Load error:', e);
+        document.getElementById('dicoList').innerHTML =
+            `<div class="dico-empty">Erreur lors du chargement du dictionnaire.</div>`;
+    }
+}
+
+function populateDicoLangFilter(items) {
+    const sel  = document.getElementById('dicoLangFilter');
+    const cur  = sel.value;
+    const langs = [...new Set(items.map(i => i.sourceLanguage).filter(Boolean))].sort();
+    // Rebuild options, preserving current selection
+    sel.innerHTML = '<option value="">🌐 Toutes les langues</option>';
+    langs.forEach(code => {
+        const name = LANG_LABELS[code] || code.toUpperCase();
+        const opt  = document.createElement('option');
+        opt.value = code;
+        opt.textContent = name;
+        if (code === cur) opt.selected = true;
+        sel.appendChild(opt);
+    });
+}
+
+function renderDictionary(items) {
+    const list  = document.getElementById('dicoList');
+    const empty = document.getElementById('dicoEmpty');
+    const count = document.getElementById('dicoCount');
+
+    count.textContent = items.length
+        ? items.length + (items.length === 1 ? ' mot' : ' mots')
+        : '';
+
+    if (!items.length) {
+        list.innerHTML = '';
+        empty.style.display = '';
+        return;
+    }
+    empty.style.display = 'none';
+
+    const frag = document.createDocumentFragment();
+    items.forEach(item => {
+        const row = document.createElement('div');
+        row.className = 'dico-row';
+        row.dataset.entryId = item.entryId;
+        row.dataset.wordId  = item.wordId;
+
+        // Date
+        let dateStr = '';
+        if (item.createdAt) {
+            const d = new Date(item.createdAt);
+            dateStr = d.toLocaleDateString(undefined, { day: '2-digit', month: '2-digit', year: '2-digit' });
+        }
+
+        // Frequency rank hint
+        const freqHtml = item.frequencyRank
+            ? `<span class="dico-freq" title="Rang de fréquence dans la langue">#${item.frequencyRank}</span>`
+            : '';
+
+        // Video link
+        const videoHtml = item.videoId
+            ? `<span class="dico-video-link" onclick="jumpToVideo('${esc(item.videoId)}')"
+                      title="${esc(item.videoTitle || item.videoId)}">🎬 ${esc(item.videoTitle || item.videoId)}</span>`
+            : '';
+
+        // Context sentences (collapsed, show as tooltip-like excerpt)
+        const contextHtml = item.sourceSentence
+            ? `<div class="dico-context" title="${esc(item.sourceSentence)}">${esc(item.sourceSentence)}</div>`
+            : '';
+
+        row.innerHTML = `
+            <div class="dico-word-cell">
+                <span class="dico-word">${esc(item.word)}</span>
+                <div class="dico-word-meta">
+                    <span class="dico-lang-badge">${(item.sourceLanguage || '').toUpperCase()}</span>
+                    ${freqHtml}
+                </div>
+                <span class="dico-date">${dateStr}</span>
+                ${videoHtml}
+            </div>
+            <div class="dico-translation-cell">
+                <span class="dico-translation">
+                    <span class="dico-lang-badge">${(item.targetLanguage || '').toUpperCase()}</span>
+                    &nbsp;${esc(item.translation || '—')}
+                </span>
+                ${contextHtml}
+            </div>
+            <div class="dico-notes-cell">
+                <textarea class="dico-notes-area" placeholder="Notes personnelles…"
+                    data-entry-id="${item.entryId}"
+                    onchange="saveDicoNotes(this)">${esc(item.notes || '')}</textarea>
+            </div>
+            <div class="dico-actions-cell">
+                <button class="dico-del-entry-btn"
+                    onclick="deleteDicoEntry(${item.entryId},'${esc(item.videoId || '')}')"
+                    title="Supprimer cette occurrence (vidéo)">🗑 occurrence</button>
+                <button class="dico-del-word-btn"
+                    onclick="deleteDicoWord(${item.wordId})"
+                    title="Supprimer le mot de toutes les vidéos">🗑 mot entier</button>
+            </div>`;
+        frag.appendChild(row);
+    });
+
+    list.innerHTML = '';
+    list.appendChild(frag);
+}
+
+/* ── Dictionary operations ───────────────────────────────────── */
+
+async function saveDicoNotes(textarea) {
+    const entryId = textarea.dataset.entryId;
+    const notes   = textarea.value;
+    try {
+        const resp = await fetch(`/api/dictionary/entries/${entryId}/notes`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ notes }),
+        });
+        if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    } catch (e) {
+        console.error('[Dictionary] Save notes error:', e);
+    }
+}
+
+async function deleteDicoEntry(entryId, videoId) {
+    if (!confirm('Supprimer cette occurrence du mot ?')) return;
+    try {
+        const resp = await fetch(`/api/dictionary/entries/${entryId}`, { method: 'DELETE' });
+        if (!resp.ok && resp.status !== 204) throw new Error('HTTP ' + resp.status);
+        // Remove row from DOM
+        const row = document.querySelector(`.dico-row[data-entry-id="${entryId}"]`);
+        if (row) row.remove();
+        // Update count
+        const remaining = document.querySelectorAll('.dico-row').length;
+        document.getElementById('dicoCount').textContent =
+            remaining ? remaining + (remaining === 1 ? ' mot' : ' mots') : '';
+        if (!remaining) document.getElementById('dicoEmpty').style.display = '';
+    } catch (e) {
+        console.error('[Dictionary] Delete entry error:', e);
+    }
+}
+
+async function deleteDicoWord(wordId) {
+    if (!confirm('Supprimer ce mot et toutes ses occurrences ?')) return;
+    try {
+        const resp = await fetch(`/api/dictionary/words/${wordId}`, { method: 'DELETE' });
+        if (!resp.ok && resp.status !== 204) throw new Error('HTTP ' + resp.status);
+        // Remove all rows for this word
+        document.querySelectorAll(`.dico-row[data-word-id="${wordId}"]`).forEach(r => r.remove());
+        const remaining = document.querySelectorAll('.dico-row').length;
+        document.getElementById('dicoCount').textContent =
+            remaining ? remaining + (remaining === 1 ? ' mot' : ' mots') : '';
+        if (!remaining) document.getElementById('dicoEmpty').style.display = '';
+    } catch (e) {
+        console.error('[Dictionary] Delete word error:', e);
+    }
+}
+
+function confirmDeleteDicoByVideo() {
+    const videoId = document.getElementById('dicoVideoFilter').value.trim();
+    if (!videoId) return;
+    if (!confirm(`Supprimer tous les mots ajoutés pour la vidéo "${videoId}" ?`)) return;
+    deleteDicoByVideo(videoId);
+}
+
+async function deleteDicoByVideo(videoId) {
+    try {
+        const resp = await fetch(`/api/dictionary/by-video/${encodeURIComponent(videoId)}`, {
+            method: 'DELETE' });
+        if (!resp.ok && resp.status !== 204) throw new Error('HTTP ' + resp.status);
+        loadDictionary();
+    } catch (e) {
+        console.error('[Dictionary] Delete by video error:', e);
+    }
+}
+
+function confirmDeleteAllDico() {
+    if (!confirm('Supprimer TOUT votre dictionnaire ? Cette action est irréversible.')) return;
+    fetch('/api/dictionary/all', { method: 'DELETE' })
+        .then(() => loadDictionary())
+        .catch(e => console.error('[Dictionary] Delete all error:', e));
+}
+
+/**
+ * Jump to a dictionary word's video: pre-fill the video URL and process.
+ * If the player is already showing that video, just close the panel.
+ */
+function jumpToVideo(videoId) {
+    closeDicoPanel();
+    if (_currentVideoId === videoId) return;
+    document.getElementById('videoUrl').value =
+        `https://www.youtube.com/watch?v=${videoId}`;
+    // Navigate back to config panel if needed
+    if (document.getElementById('playerLayout').classList.contains('hidden')) {
+        // already on config screen — nothing to do
+    } else {
+        resetApp();
+    }
 }

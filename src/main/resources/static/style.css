@@ -1971,3 +1971,323 @@ body.theme-light .stat-lbl { color: rgba(0,0,0,.45); }
         max-height: 300px;   /* scrollable list, not full-page */
     }
 }
+
+/* ══════════════════════════════════════════════════════════════
+   DICTIONARY — WORD SPANS (clickable words in HUD subtitles)
+   ══════════════════════════════════════════════════════════════ */
+.ws {
+    cursor: pointer;
+    border-radius: 3px;
+    transition: background .15s, color .15s;
+}
+.ws:hover {
+    background: rgba(0, 255, 180, .18);
+    color: #00ffb4;
+    outline: 1px solid rgba(0,255,180,.35);
+}
+/* Clicked state */
+.ws.ws-active {
+    background: rgba(0, 255, 180, .28);
+    color: #00ffb4;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   DICTIONARY — WORD LOOKUP BAR (bottom of player)
+   ══════════════════════════════════════════════════════════════ */
+.word-bar {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: .75rem; flex-wrap: wrap;
+    background: rgba(6, 14, 30, .97);
+    border-top: 1px solid rgba(0,255,180,.3);
+    border-bottom: 1px solid rgba(0,255,180,.12);
+    padding: .55rem 1rem;
+    font-family: 'Exo 2', sans-serif; font-size: .92rem;
+    animation: wb-slide-in .2s ease;
+}
+@keyframes wb-slide-in {
+    from { opacity:0; transform:translateY(8px); }
+    to   { opacity:1; transform:translateY(0); }
+}
+.wb-left  { display: flex; align-items: center; gap: .6rem; flex: 1; min-width: 0; }
+.wb-right { display: flex; align-items: center; gap: .5rem; flex-shrink: 0; }
+
+.wb-word {
+    font-family: 'Orbitron', sans-serif; font-size: .82rem;
+    color: #00ffb4; letter-spacing: .06em;
+    white-space: nowrap;
+}
+.wb-arrow { color: rgba(255,255,255,.3); font-size: 1rem; }
+.wb-result {
+    color: #fff; font-size: .92rem;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+@keyframes wb-spin { to { transform: rotate(360deg); } }
+.wb-spinner {
+    color: #00ffb4; font-size: 1rem;
+    display: inline-block;
+    animation: wb-spin .7s linear infinite;
+}
+
+.wb-save-btn {
+    background: rgba(0,255,180,.1); border: 1px solid rgba(0,255,180,.35);
+    color: #00ffb4; font-family: 'Orbitron', sans-serif;
+    font-size: .62rem; letter-spacing: .07em;
+    padding: .3rem .65rem; border-radius: 4px;
+    cursor: pointer; transition: background .15s;
+}
+.wb-save-btn:hover { background: rgba(0,255,180,.22); }
+.wb-save-btn:disabled { opacity: .5; cursor: default; }
+
+.wb-saved {
+    font-family: 'Orbitron', sans-serif; font-size: .62rem;
+    color: #00ffb4; letter-spacing: .07em;
+}
+.wb-close-btn {
+    background: none; border: none; color: rgba(255,255,255,.35);
+    font-size: 1rem; line-height: 1; padding: .1rem .3rem;
+    cursor: pointer; transition: color .15s;
+}
+.wb-close-btn:hover { color: rgba(255,255,255,.7); }
+
+/* light theme */
+body.theme-light .word-bar {
+    background: rgba(240,244,255,.98);
+    border-top-color: rgba(0,102,204,.3);
+    border-bottom-color: rgba(0,102,204,.1);
+}
+body.theme-light .wb-word   { color: #0055a5; }
+body.theme-light .wb-arrow  { color: rgba(0,0,0,.3); }
+body.theme-light .wb-result { color: #1a2a3a; }
+body.theme-light .wb-spinner { color: #0066cc; }
+body.theme-light .wb-save-btn {
+    background: rgba(0,102,204,.08); border-color: rgba(0,102,204,.35); color: #0055a5;
+}
+body.theme-light .wb-save-btn:hover { background: rgba(0,102,204,.18); }
+body.theme-light .wb-saved    { color: #007a28; }
+body.theme-light .wb-close-btn { color: rgba(0,0,0,.3); }
+body.theme-light .ws:hover {
+    background: rgba(0,85,165,.1); color: #0055a5;
+    outline-color: rgba(0,85,165,.25);
+}
+body.theme-light .ws.ws-active {
+    background: rgba(0,85,165,.15); color: #0055a5;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   DICTIONARY PANEL
+   ══════════════════════════════════════════════════════════════ */
+.dico-panel {
+    position: fixed; inset: 0; z-index: 962;
+    background: #06060e; display: flex; flex-direction: column; overflow: hidden;
+}
+
+.dico-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: .85rem 1.5rem;
+    background: rgba(255,255,255,.03);
+    border-bottom: 1px solid rgba(0,255,180,.12);
+    flex-shrink: 0;
+}
+.dico-title {
+    font-family: 'Orbitron', sans-serif; font-size: .85rem;
+    letter-spacing: .12em; color: #00ffb4;
+}
+.dico-close {
+    background: rgba(255,100,60,.08); border: 1px solid rgba(255,100,60,.3);
+    color: rgba(255,100,60,.8); font-family: 'Orbitron', sans-serif;
+    font-size: .6rem; letter-spacing: .08em;
+    padding: .4rem .8rem; border-radius: 4px; cursor: pointer;
+    transition: background .15s;
+}
+.dico-close:hover { background: rgba(255,100,60,.18); }
+
+.dico-filters {
+    padding: .75rem 1.5rem; border-bottom: 1px solid rgba(255,255,255,.06);
+    flex-shrink: 0;
+}
+.dico-filter-row {
+    display: flex; gap: .6rem; flex-wrap: wrap; align-items: center;
+    margin-bottom: .5rem;
+}
+.dico-select {
+    background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.12);
+    color: rgba(255,255,255,.75); font-family: 'Exo 2', sans-serif; font-size: .8rem;
+    padding: .35rem .6rem; border-radius: 4px; cursor: pointer;
+}
+.dico-select:focus { outline: none; border-color: rgba(0,255,180,.4); }
+.dico-input {
+    background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.12);
+    color: rgba(255,255,255,.75); font-family: 'Exo 2', sans-serif; font-size: .8rem;
+    padding: .35rem .6rem; border-radius: 4px;
+    flex: 1; min-width: 140px;
+}
+.dico-input::placeholder { color: rgba(255,255,255,.3); }
+.dico-input:focus { outline: none; border-color: rgba(0,255,180,.4); }
+.dico-date-input { flex: 0 0 auto; min-width: 0; width: 140px; }
+
+.dico-actions-row {
+    display: flex; align-items: center; justify-content: space-between; gap: .5rem;
+}
+.dico-count {
+    font-family: 'Orbitron', sans-serif; font-size: .6rem;
+    letter-spacing: .08em; color: rgba(255,255,255,.35);
+}
+.dico-bulk-btns { display: flex; gap: .5rem; }
+.dico-bulk-btn {
+    background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.15);
+    color: rgba(255,255,255,.55); font-family: 'Orbitron', sans-serif;
+    font-size: .58rem; letter-spacing: .07em;
+    padding: .3rem .65rem; border-radius: 4px; cursor: pointer;
+    transition: background .15s;
+}
+.dico-bulk-btn:hover { background: rgba(255,255,255,.1); }
+.dico-bulk-btn.dico-bulk-danger {
+    border-color: rgba(255,80,60,.3); color: rgba(255,100,80,.8);
+}
+.dico-bulk-btn.dico-bulk-danger:hover { background: rgba(255,80,60,.1); }
+
+.dico-list {
+    flex: 1; overflow-y: auto; padding: .75rem 1.5rem;
+}
+.dico-empty {
+    text-align: center; color: rgba(255,255,255,.3);
+    font-family: 'Exo 2', sans-serif; font-size: .9rem;
+    padding: 3rem 1rem; line-height: 1.7;
+}
+
+/* Each dictionary entry row */
+.dico-row {
+    display: grid;
+    grid-template-columns: auto 1fr auto auto;
+    gap: .75rem; align-items: start;
+    padding: .75rem 0;
+    border-bottom: 1px solid rgba(255,255,255,.05);
+}
+.dico-row:last-child { border-bottom: none; }
+
+.dico-word-cell {
+    display: flex; flex-direction: column; gap: .15rem; min-width: 130px;
+}
+.dico-word {
+    font-family: 'Orbitron', sans-serif; font-size: .78rem;
+    letter-spacing: .07em; color: #00ffb4;
+}
+.dico-word-meta {
+    display: flex; gap: .4rem; align-items: center; flex-wrap: wrap;
+}
+.dico-lang-badge {
+    font-family: 'Orbitron', sans-serif; font-size: .5rem;
+    letter-spacing: .08em;
+    padding: .1rem .35rem; border-radius: 3px;
+    background: rgba(0,255,180,.1); border: 1px solid rgba(0,255,180,.2);
+    color: rgba(0,255,180,.7);
+}
+.dico-freq {
+    font-size: .65rem; color: rgba(255,255,255,.3);
+}
+
+.dico-translation-cell {
+    display: flex; flex-direction: column; gap: .25rem; min-width: 0;
+}
+.dico-translation {
+    color: #e8d5a0; font-family: 'Exo 2', sans-serif; font-size: .87rem;
+}
+.dico-context {
+    font-size: .75rem; color: rgba(255,255,255,.35); font-style: italic;
+    overflow: hidden; text-overflow: ellipsis;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+}
+.dico-video-link {
+    font-size: .72rem; color: rgba(100,180,255,.6);
+    cursor: pointer; text-decoration: underline dotted;
+}
+.dico-video-link:hover { color: rgba(100,180,255,.9); }
+.dico-date {
+    font-size: .68rem; color: rgba(255,255,255,.25);
+}
+
+/* Notes cell */
+.dico-notes-cell { min-width: 160px; }
+.dico-notes-area {
+    width: 100%; background: rgba(255,255,255,.04);
+    border: 1px solid rgba(255,255,255,.1); border-radius: 4px;
+    color: rgba(255,255,255,.65); font-family: 'Exo 2', sans-serif;
+    font-size: .78rem; padding: .3rem .45rem; resize: vertical;
+    min-height: 48px; max-height: 120px;
+    box-sizing: border-box;
+    transition: border-color .2s;
+}
+.dico-notes-area:focus { outline: none; border-color: rgba(0,255,180,.35); }
+.dico-notes-area::placeholder { color: rgba(255,255,255,.2); font-style: italic; }
+
+/* Actions cell */
+.dico-actions-cell {
+    display: flex; flex-direction: column; gap: .3rem; align-items: flex-end; flex-shrink: 0;
+}
+.dico-del-entry-btn, .dico-del-word-btn {
+    background: none; border: 1px solid rgba(255,80,60,.25);
+    color: rgba(255,100,80,.6); font-family: 'Orbitron', sans-serif;
+    font-size: .5rem; letter-spacing: .06em;
+    padding: .25rem .5rem; border-radius: 3px; cursor: pointer;
+    white-space: nowrap;
+    transition: background .15s, color .15s;
+}
+.dico-del-entry-btn:hover, .dico-del-word-btn:hover {
+    background: rgba(255,80,60,.1); color: rgba(255,100,80,.9);
+}
+.dico-del-word-btn { border-color: rgba(255,80,60,.4); }
+
+/* ── Dictionary panel — light theme ────────────────────────── */
+body.theme-light .dico-panel { background: #f0f4fb; }
+body.theme-light .dico-header {
+    background: #ffffff; border-bottom-color: rgba(0,102,204,.15);
+}
+body.theme-light .dico-title { color: #0055a5; }
+body.theme-light .dico-close {
+    background: rgba(204,34,0,.06); border-color: rgba(204,34,0,.25); color: #cc2200;
+}
+body.theme-light .dico-close:hover { background: rgba(204,34,0,.12); }
+body.theme-light .dico-filters { border-bottom-color: rgba(0,0,0,.08); }
+body.theme-light .dico-select {
+    background: #fff; border-color: rgba(0,102,204,.2); color: #1a2a3a;
+}
+body.theme-light .dico-input {
+    background: #fff; border-color: rgba(0,102,204,.2); color: #1a2a3a;
+}
+body.theme-light .dico-input::placeholder { color: rgba(0,0,0,.3); }
+body.theme-light .dico-count { color: rgba(0,0,0,.35); }
+body.theme-light .dico-bulk-btn {
+    background: rgba(0,0,0,.04); border-color: rgba(0,0,0,.15); color: rgba(0,0,0,.5);
+}
+body.theme-light .dico-bulk-btn.dico-bulk-danger {
+    border-color: rgba(204,34,0,.3); color: #cc2200;
+}
+body.theme-light .dico-empty { color: rgba(0,0,0,.3); }
+body.theme-light .dico-row { border-bottom-color: rgba(0,0,0,.06); }
+body.theme-light .dico-word { color: #0055a5; }
+body.theme-light .dico-lang-badge {
+    background: rgba(0,85,165,.08); border-color: rgba(0,85,165,.2); color: #0055a5;
+}
+body.theme-light .dico-translation { color: #7a5000; }
+body.theme-light .dico-context { color: rgba(0,0,0,.38); }
+body.theme-light .dico-video-link { color: rgba(0,80,180,.6); }
+body.theme-light .dico-date { color: rgba(0,0,0,.28); }
+body.theme-light .dico-notes-area {
+    background: #fff; border-color: rgba(0,102,204,.15); color: #1a2a3a;
+}
+body.theme-light .dico-notes-area:focus { border-color: rgba(0,102,204,.4); }
+body.theme-light .dico-del-entry-btn, body.theme-light .dico-del-word-btn {
+    border-color: rgba(204,34,0,.25); color: rgba(180,20,0,.7);
+}
+
+/* ── Dictionary panel — responsive ─────────────────────────── */
+@media (max-width: 600px) {
+    .dico-filters { padding: .6rem .75rem; }
+    .dico-filter-row { gap: .4rem; }
+    .dico-list { padding: .5rem .75rem; }
+    .dico-row { grid-template-columns: 1fr; gap: .4rem; }
+    .dico-actions-cell { flex-direction: row; align-items: center; justify-content: flex-end; }
+    .dico-notes-cell { min-width: 0; width: 100%; }
+    .word-bar { padding: .45rem .75rem; }
+    .wb-right { gap: .35rem; }
+}
