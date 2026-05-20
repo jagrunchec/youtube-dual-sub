@@ -2116,13 +2116,19 @@ async function highlightPeerWord(word, track, peerEl) {
     if (!transWords.length) return;
     clearPeerHL(peerEl);
 
-    // For each translation token, find the best-matching .ws span in the peer track
+    // For each translation token, find the best-matching .ws span in the peer track.
+    // We split each peer word on hyphens / apostrophes / typographic apostrophes so
+    // that compound forms like "venons-nous" or "d'où" can match a short pronoun.
     peerEl.querySelectorAll('.ws').forEach(span => {
-        const sw = normWord(span.dataset.word);
-        if (!sw) return;
-        const matched = transWords.some(tw =>
-            sw === tw ||
-            (sw.length > 3 && tw.length > 3 && (sw.startsWith(tw) || tw.startsWith(sw)))
+        const raw = normWord(span.dataset.word);
+        if (!raw) return;
+        const subTokens = raw.split(/[-'’]/).filter(Boolean);
+        const candidates = [raw, ...subTokens];
+        const matched = candidates.some(sw =>
+            transWords.some(tw =>
+                sw === tw ||
+                (sw.length > 3 && tw.length > 3 && (sw.startsWith(tw) || tw.startsWith(sw)))
+            )
         );
         if (matched) span.classList.add('ws-peer-word-hl');
     });
