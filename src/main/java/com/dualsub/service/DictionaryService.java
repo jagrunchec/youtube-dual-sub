@@ -153,6 +153,7 @@ public class DictionaryService {
      * @param from     filter to entries created on or after this date (null = all)
      * @param lang     filter to a specific source language (null = all)
      */
+    @Transactional(readOnly = true)
     public List<DictionaryItemDto> list(Long userId, String sort,
                                         String videoId, LocalDate from, String lang) {
         List<DictionaryEntry> entries;
