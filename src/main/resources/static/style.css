@@ -2165,6 +2165,16 @@ body.theme-light .ws.ws-active {
     font-family: 'Orbitron', sans-serif; font-size: .85rem;
     letter-spacing: .12em; color: #00ffb4;
 }
+.dico-header-actions {
+    display: flex; align-items: center; gap: .5rem;
+}
+.dico-hdr-btn {
+    background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.12);
+    color: rgba(255,255,255,.6); font-size: .95rem; line-height: 1;
+    padding: .35rem .5rem; border-radius: 4px; cursor: pointer;
+    transition: background .15s, color .15s;
+}
+.dico-hdr-btn:hover { background: rgba(255,255,255,.14); color: rgba(255,255,255,.95); }
 .dico-close {
     background: rgba(255,100,60,.08); border: 1px solid rgba(255,100,60,.3);
     color: rgba(255,100,60,.8); font-family: 'Orbitron', sans-serif;
@@ -2387,13 +2397,14 @@ body.theme-light .dico-tag-input { background: rgba(0,0,0,.04); border-color: rg
     display: flex; flex-direction: column; align-items: flex-end; flex-shrink: 0;
 }
 .dico-del-entry-btn {
-    background: none; border: none;
-    color: rgba(255,100,80,.35); font-size: 1rem; line-height: 1;
-    padding: .15rem .2rem; border-radius: 4px; cursor: pointer;
-    transition: color .15s, background .15s;
+    background: rgba(255,80,60,.06); border: 1px solid rgba(255,80,60,.2);
+    color: rgba(255,100,80,.6); font-size: 1rem; line-height: 1;
+    padding: .3rem .4rem; border-radius: 4px; cursor: pointer;
+    transition: color .15s, background .15s, border-color .15s;
 }
 .dico-del-entry-btn:hover {
-    color: rgba(255,80,60,.9); background: rgba(255,80,60,.1);
+    color: rgba(255,80,60,1); background: rgba(255,80,60,.15);
+    border-color: rgba(255,80,60,.5);
 }
 
 /* ── Dictionary panel — light theme ────────────────────────── */
@@ -2402,10 +2413,20 @@ body.theme-light .dico-header {
     background: #ffffff; border-bottom-color: rgba(0,102,204,.15);
 }
 body.theme-light .dico-title { color: #0055a5; }
+body.theme-light .dico-hdr-btn {
+    background: rgba(0,102,204,.06); border-color: rgba(0,102,204,.18); color: #1a2a3a;
+}
+body.theme-light .dico-hdr-btn:hover { background: rgba(0,102,204,.13); color: #0055a5; }
 body.theme-light .dico-close {
     background: rgba(204,34,0,.06); border-color: rgba(204,34,0,.25); color: #cc2200;
 }
 body.theme-light .dico-close:hover { background: rgba(204,34,0,.12); }
+body.theme-light .dico-del-entry-btn {
+    background: rgba(204,34,0,.05); border-color: rgba(204,34,0,.2); color: rgba(180,20,0,.6);
+}
+body.theme-light .dico-del-entry-btn:hover {
+    background: rgba(204,34,0,.1); border-color: rgba(204,34,0,.4); color: #cc2200;
+}
 body.theme-light .dico-filters { border-bottom-color: rgba(0,0,0,.08); }
 body.theme-light .dico-select {
     background: #fff; border-color: rgba(0,102,204,.2); color: #1a2a3a;

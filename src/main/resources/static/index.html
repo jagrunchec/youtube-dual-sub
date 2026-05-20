@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Exo+2:wght@300;400;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css?v=37">
+    <link rel="stylesheet" href="style.css?v=38">
     <!-- Twemoji: flag emoji rendered as SVG images (Windows desktop doesn't support flag emoji natively) -->
     <script src="https://cdn.jsdelivr.net/npm/twemoji@14.0.2/dist/twemoji.min.js" crossorigin="anonymous"></script>
 </head>
@@ -415,7 +415,11 @@
 <div class="dico-panel hidden" id="dicoPanel">
     <div class="dico-header">
         <span class="dico-title">📚 <span id="dicoPanelTitle">MON DICTIONNAIRE</span></span>
-        <button class="dico-close" onclick="closeDicoPanel()">✕ FERMER</button>
+        <div class="dico-header-actions">
+            <button class="dico-hdr-btn" onclick="toggleTheme()" title="Changer de thème">☀</button>
+            <button class="dico-hdr-btn" onclick="showProfileModal()" title="Profil">👤</button>
+            <button class="dico-close" onclick="closeDicoPanel()">✕ FERMER</button>
+        </div>
     </div>
     <div class="dico-filters">
         <div class="dico-filter-row">
@@ -649,6 +653,6 @@
 </div>
 
 <script src="https://www.youtube.com/iframe_api"></script>
-<script src="app.js?v=40"></script>
+<script src="app.js?v=41"></script>
 </body>
 </html>
