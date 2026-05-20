@@ -28,6 +28,9 @@ function showApp() {
     document.getElementById('userBar').classList.remove('hidden');
     document.getElementById('mainApp').classList.remove('hidden');
     renderUserBar();
+    // Load the list of available summary engines (Ollama/Gemini) so the radio
+    // pills are ready by the time the user analyzes a video.
+    _loadSummaryEngines();
     // Show help automatically on first visit
     if (!localStorage.getItem('dualsubHelpSeen')) {
         setTimeout(showHelp, 700);
@@ -1482,6 +1485,9 @@ function showPlayer(videoId) {
     document.getElementById('trHead1').textContent = l1;
     document.getElementById('trHead2').textContent = l2;
     renderTranscript();
+
+    // Reset the summary panel for this new video
+    _resetSummaryPanel(videoId, _activeLang1Code, _activeLang2Code);
     lastTranscriptIdx = -1;
 
     // Position memory: offer resume if we have a saved position > 10 s
@@ -2999,5 +3005,170 @@ function _getEffectiveWhisperModel(durationSec) {
     // Resolve auto: fall back to 'medium' if duration is unknown
     if (typeof durationSec !== 'number' || durationSec <= 0) return 'medium';
     return durationSec < _whisperAutoMinutes * 60 ? 'large-v3' : 'medium';
+}
+
+/* ══════════════════════════════════════════════════════════════
+   VIDEO SUMMARIES
+   ══════════════════════════════════════════════════════════════ */
+
+let _summaryEngines = [];       // populated from /api/summary/engines on app start
+// _currentVideoId is already declared globally and set by showPlayer().
+let _summarySse     = [null, null]; // active SSE per track (0=lang1, 1=lang2)
+const _OLLAMA_UNSUPPORTED = new Set(['ar', 'hi']);
+
+/** Fetches the list of available summary engines and builds the engine selector. */
+async function _loadSummaryEngines() {
+    try {
+        const resp = await fetch('/api/summary/engines');
+        if (!resp.ok) return;
+        const data = await resp.json();
+        _summaryEngines = data.engines || [];
+        _renderSummaryEngineSelector();
+    } catch (e) {
+        console.warn('[Summary] Could not load engines:', e);
+    }
+}
+
+/** Renders the engine pills in the summary panel header. */
+function _renderSummaryEngineSelector() {
+    const row = document.getElementById('summaryEngineRow');
+    if (!row) return;
+
+    const available = _summaryEngines.filter(e => e.available);
+    if (available.length === 0) {
+        row.innerHTML = '<span style="color:rgba(255,255,255,.35);font-family:Exo 2,sans-serif;font-size:.7rem">Aucun moteur disponible</span>';
+        return;
+    }
+    // Default: first available engine
+    const defaultId = available[0].id;
+    row.innerHTML = _summaryEngines.map(eng => {
+        const disabled = !eng.available ? 'disabled' : '';
+        const checked  = eng.id === defaultId ? 'checked' : '';
+        const title    = eng.available
+            ? `${eng.label} (${eng.model})`
+            : 'Non disponible — vérifier la configuration serveur';
+        return `<label class="summary-engine-pill ${disabled}" title="${title}">
+            <input type="radio" name="summaryEngine" value="${eng.id}" ${checked} ${disabled ? 'disabled' : ''}
+                   onchange="_onSummaryEngineChange()">
+            <span>${eng.label}</span>
+        </label>`;
+    }).join('');
+    _onSummaryEngineChange(); // sync button states based on default selection
+}
+
+/** Called when the user changes engine — updates per-track button enabled state. */
+function _onSummaryEngineChange() {
+    const engine = document.querySelector('input[name="summaryEngine"]:checked')?.value;
+    [1, 2].forEach(track => {
+        const lang = track === 1 ? _activeLang1Code : _activeLang2Code;
+        const btn  = document.getElementById('sumGenBtn' + track);
+        if (!btn || !lang) return;
+        const unsupported = engine === 'ollama' && _OLLAMA_UNSUPPORTED.has(lang);
+        btn.disabled = unsupported;
+        btn.title = unsupported
+            ? 'Ollama ne supporte pas cette langue — basculez sur Gemini'
+            : '';
+    });
+}
+
+/** Toggle the summary panel open/closed. */
+function toggleSummaryPanel() {
+    const panel = document.getElementById('summaryPanel');
+    const body  = document.getElementById('summaryBody');
+    panel.classList.toggle('open');
+    body.classList.toggle('hidden');
+}
+
+/** Called by showPlayer() to reset summary UI for a new video. */
+function _resetSummaryPanel(videoId, lang1Code, lang2Code) {
+    _currentVideoId = videoId;
+    // Cancel any in-flight summary requests
+    [0, 1].forEach(i => { if (_summarySse[i]) { _summarySse[i].close(); _summarySse[i] = null; } });
+    // Reset badges + content
+    document.getElementById('sumLang1Badge').textContent = (lang1Code || 'XX').toUpperCase();
+    document.getElementById('sumLang2Badge').textContent = (lang2Code || 'XX').toUpperCase();
+    document.getElementById('sumText1').textContent = '';
+    document.getElementById('sumText2').textContent = '';
+    document.getElementById('sumText1').classList.remove('loading');
+    document.getElementById('sumText2').classList.remove('loading');
+    document.getElementById('sumMeta1').textContent = '';
+    document.getElementById('sumMeta2').textContent = '';
+    document.getElementById('sumRefreshBtn1').classList.add('hidden');
+    document.getElementById('sumRefreshBtn2').classList.add('hidden');
+    document.getElementById('sumGenBtn1').disabled = false;
+    document.getElementById('sumGenBtn2').disabled = false;
+    _onSummaryEngineChange();
+}
+
+/**
+ * Generates a summary for the given track (1 or 2).
+ * @param {1|2}    track    which language track
+ * @param {boolean} refresh  if true, bypass cache and regenerate
+ */
+function generateSummary(track, refresh = false) {
+    if (!_currentVideoId) return;
+    const lang   = track === 1 ? _activeLang1Code : _activeLang2Code;
+    const engine = document.querySelector('input[name="summaryEngine"]:checked')?.value;
+    if (!lang || !engine) return;
+
+    const i      = track - 1;
+    const textEl = document.getElementById('sumText' + track);
+    const metaEl = document.getElementById('sumMeta' + track);
+    const genBtn = document.getElementById('sumGenBtn' + track);
+    const refBtn = document.getElementById('sumRefreshBtn' + track);
+
+    // Close any previous SSE for this track
+    if (_summarySse[i]) { _summarySse[i].close(); _summarySse[i] = null; }
+
+    textEl.textContent = '';
+    textEl.classList.add('loading');
+    metaEl.textContent = '';
+    genBtn.disabled = true;
+    refBtn.classList.add('hidden');
+
+    const params = new URLSearchParams({
+        videoId: _currentVideoId, lang, engine, refresh: refresh ? 'true' : 'false'
+    });
+    const sse = new EventSource('/api/summary/stream?' + params);
+    _summarySse[i] = sse;
+    let handled = false;
+
+    sse.addEventListener('progress', e => {
+        // single "generating" step — already showing the spinner
+    });
+
+    sse.addEventListener('complete', e => {
+        handled = true;
+        _summarySse[i] = null;
+        sse.close();
+        const data = JSON.parse(e.data);
+        textEl.classList.remove('loading');
+        textEl.textContent = data.summary || '';
+        const cachedMark = data.cached ? ' · cache' : '';
+        const seconds    = data.durationMs ? ` · ${(data.durationMs/1000).toFixed(1)}s` : '';
+        metaEl.textContent = `ⓘ ${data.engine} / ${data.model}${seconds}${cachedMark}`;
+        genBtn.disabled = false;
+        refBtn.classList.remove('hidden');
+    });
+
+    sse.addEventListener('apierror', e => {
+        handled = true;
+        _summarySse[i] = null;
+        sse.close();
+        const data = JSON.parse(e.data);
+        textEl.classList.remove('loading');
+        textEl.textContent = '⚠ ' + (data.error || 'Erreur inconnue');
+        metaEl.textContent = '';
+        genBtn.disabled = false;
+    });
+
+    sse.onerror = () => {
+        if (handled) return;
+        _summarySse[i] = null;
+        sse.close();
+        textEl.classList.remove('loading');
+        textEl.textContent = '⚠ Connexion perdue';
+        genBtn.disabled = false;
+    };
 }
 

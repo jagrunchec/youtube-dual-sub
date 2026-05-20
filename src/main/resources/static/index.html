@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Exo+2:wght@300;400;600;700&family=Noto+Sans+Devanagari:wght@400;600&family=Noto+Sans+Arabic:wght@400;600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css?v=48">
+    <link rel="stylesheet" href="style.css?v=49">
     <!-- Twemoji: flag emoji rendered as SVG images (Windows desktop doesn't support flag emoji natively) -->
     <script src="https://cdn.jsdelivr.net/npm/twemoji@14.0.2/dist/twemoji.min.js" crossorigin="anonymous"></script>
 </head>
@@ -330,6 +330,35 @@
                     <div class="hud-track orange-track">
                         <span class="hud-badge orange-badge" id="lang2Badge">DE</span>
                         <span class="hud-text" id="subtitleText2" dir="auto">&nbsp;</span>
+                    </div>
+
+                    <!-- ═══ SUMMARY PANEL ═══ -->
+                    <div class="summary-panel" id="summaryPanel">
+                        <div class="summary-header" onclick="toggleSummaryPanel()">
+                            <span class="summary-chevron" id="summaryChevron">▶</span>
+                            <span class="summary-title">// RÉSUMÉ</span>
+                            <span class="summary-engine-row" id="summaryEngineRow"></span>
+                        </div>
+                        <div class="summary-body hidden" id="summaryBody">
+                            <div class="summary-card green-card">
+                                <div class="summary-card-head">
+                                    <span class="hud-badge green-badge" id="sumLang1Badge">FR</span>
+                                    <button class="sum-btn" id="sumGenBtn1" onclick="generateSummary(1)">📝 GÉNÉRER</button>
+                                    <button class="sum-btn sum-refresh hidden" id="sumRefreshBtn1" onclick="generateSummary(1, true)" title="Régénérer">🔄</button>
+                                </div>
+                                <div class="summary-text" id="sumText1" dir="auto"></div>
+                                <div class="summary-meta" id="sumMeta1"></div>
+                            </div>
+                            <div class="summary-card orange-card">
+                                <div class="summary-card-head">
+                                    <span class="hud-badge orange-badge" id="sumLang2Badge">DE</span>
+                                    <button class="sum-btn" id="sumGenBtn2" onclick="generateSummary(2)">📝 GÉNÉRER</button>
+                                    <button class="sum-btn sum-refresh hidden" id="sumRefreshBtn2" onclick="generateSummary(2, true)" title="Régénérer">🔄</button>
+                                </div>
+                                <div class="summary-text" id="sumText2" dir="auto"></div>
+                                <div class="summary-meta" id="sumMeta2"></div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -672,6 +701,6 @@
 </div>
 
 <script src="https://www.youtube.com/iframe_api"></script>
-<script src="app.js?v=49"></script>
+<script src="app.js?v=50"></script>
 </body>
 </html>

@@ -1,0 +1,60 @@
+databaseChangeLog:
+  - changeSet:
+      id: 017-video-summaries
+      author: dualsub
+      changes:
+        - createTable:
+            tableName: video_summaries
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: video_id
+                  type: VARCHAR(30)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: lang
+                  type: VARCHAR(10)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: engine
+                  type: VARCHAR(20)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: model
+                  type: VARCHAR(50)
+              - column:
+                  name: summary
+                  type: CLOB
+                  constraints:
+                    nullable: false
+              - column:
+                  name: duration_ms
+                  type: INTEGER
+              - column:
+                  name: created_at
+                  type: TIMESTAMP
+                  constraints:
+                    nullable: false
+        - addUniqueConstraint:
+            tableName: video_summaries
+            columnNames: video_id, lang, engine
+            constraintName: uk_video_summary
+        - createIndex:
+            tableName: video_summaries
+            indexName: idx_video_summary_lookup
+            columns:
+              - column:
+                  name: video_id
+              - column:
+                  name: lang
+              - column:
+                  name: engine
