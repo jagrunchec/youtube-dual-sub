@@ -2352,11 +2352,11 @@ function renderDictionary(items) {
         : '';
 
     if (!items.length) {
-        list.innerHTML = '';
-        empty.style.display = '';
+        list.querySelectorAll('.dico-row').forEach(r => r.remove());
+        if (empty) empty.style.display = '';
         return;
     }
-    empty.style.display = 'none';
+    if (empty) empty.style.display = 'none';
 
     const frag = document.createDocumentFragment();
     items.forEach(item => {
@@ -2440,7 +2440,7 @@ function renderDictionary(items) {
         frag.appendChild(row);
     });
 
-    list.innerHTML = '';
+    list.querySelectorAll('.dico-row').forEach(r => r.remove());
     list.appendChild(frag);
 }
 
@@ -2556,14 +2556,17 @@ function showTagInput(btn, wordId) {
     btn.replaceWith(input);
     input.focus();
 
+    let committed = false;
     const commit = () => {
+        if (committed) return;
+        committed = true;
         const val = input.value.trim().toLowerCase();
         if (val) addTag(wordId, val, input);
         else restoreAddButton(input, wordId);
     };
     input.addEventListener('keydown', e => {
         if (e.key === 'Enter') { e.preventDefault(); commit(); }
-        if (e.key === 'Escape') restoreAddButton(input, wordId);
+        if (e.key === 'Escape') { committed = true; restoreAddButton(input, wordId); }
     });
     input.addEventListener('blur', commit);
 }

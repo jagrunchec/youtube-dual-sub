@@ -2218,7 +2218,7 @@ body.theme-light .ws.ws-active {
     color: rgba(0,255,180,.7);
 }
 .dico-freq {
-    font-size: .65rem; color: rgba(255,255,255,.3);
+    font-size: .65rem; color: rgba(180,220,255,.75);
 }
 
 .dico-translation-cell {
