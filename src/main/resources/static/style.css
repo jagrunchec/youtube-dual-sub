@@ -2274,6 +2274,8 @@ body.theme-light .ws.ws-active {
 }
 
 /* ── Frequency colour tiers (shared by .dico-freq and .wb-freq) ──────────── */
+/* Double encoding: colour + shape symbol (::before) for colorblind users.   */
+/* Shapes: ★ ◆ ▲ ■ ● ○ –  — each clearly distinct in B&W.                  */
 .freq-red    { color: #ff5555; background: rgba(255,60,60,.13);   border-color: rgba(255,60,60,.45);   }
 .freq-orange { color: #ff9500; background: rgba(255,149,0,.13);   border-color: rgba(255,149,0,.45);   }
 .freq-yellow { color: #ffd000; background: rgba(255,208,0,.13);   border-color: rgba(255,208,0,.45);   }
@@ -2281,6 +2283,17 @@ body.theme-light .ws.ws-active {
 .freq-blue   { color: #60a5fa; background: rgba(96,165,250,.13);  border-color: rgba(96,165,250,.45);  }
 .freq-purple { color: #c084fc; background: rgba(192,132,252,.13); border-color: rgba(192,132,252,.45); }
 .freq-muted  { color: rgba(255,255,255,.45); background: rgba(255,255,255,.06); border-color: rgba(255,255,255,.18); }
+
+/* Shape symbols injected before the text — inherit currentColor for free.   */
+.dico-freq::before,
+.wb-freq::before    { margin-right: .25em; font-style: normal; }
+.freq-red::before    { content: '★'; }   /* étoile       – top 1 000  */
+.freq-orange::before { content: '◆'; }   /* losange plein – top 2 000  */
+.freq-yellow::before { content: '▲'; }   /* triangle plein– top 3 000  */
+.freq-green::before  { content: '■'; }   /* carré plein   – top 5 000  */
+.freq-blue::before   { content: '●'; }   /* cercle plein  – top 8 000  */
+.freq-purple::before { content: '○'; }   /* cercle vide   – top 12 000 */
+.freq-muted::before  { content: '–'; }   /* tiret         – au-delà    */
 
 .dico-translation-cell {
     display: flex; flex-direction: column; gap: .25rem; min-width: 0;
