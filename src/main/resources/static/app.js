@@ -3011,9 +3011,10 @@ function _getEffectiveWhisperModel(durationSec) {
    VIDEO SUMMARIES
    ══════════════════════════════════════════════════════════════ */
 
-let _summaryEngines = [];       // populated from /api/summary/engines on app start
+let _summaryEngines  = [];       // populated from /api/summary/engines on app start
 // _currentVideoId is already declared globally and set by showPlayer().
-let _summarySse     = [null, null]; // active SSE per track (0=lang1, 1=lang2)
+let _summarySse      = [null, null]; // active SSE per track (0=lang1, 1=lang2)
+let _summaryLengthPct = parseInt(localStorage.getItem('dualsubSumLengthPct') || '25', 10);
 const _OLLAMA_UNSUPPORTED = new Set(['ar', 'hi']);
 
 /** Fetches the list of available summary engines and builds the engine selector. */
@@ -3082,6 +3083,18 @@ function _onSummaryEngineChange() {
     if (_currentVideoId) _loadCachedSummaries();
 }
 
+/** Called when the user edits the length percentage input. */
+function _onSummaryLengthChange() {
+    const input = document.getElementById('sumLengthPct');
+    if (!input) return;
+    let val = parseInt(input.value, 10);
+    if (isNaN(val) || val < 5)  val = 5;
+    if (val > 100) val = 100;
+    input.value = val;
+    _summaryLengthPct = val;
+    localStorage.setItem('dualsubSumLengthPct', String(val));
+}
+
 /** Toggle the summary panel open/closed. */
 function toggleSummaryPanel() {
     const panel = document.getElementById('summaryPanel');
@@ -3106,6 +3119,9 @@ function _resetSummaryPanel(videoId, lang1Code, lang2Code) {
         document.getElementById('sumGenBtn' + track).disabled = false;
         document.getElementById('sumRefreshBtn' + track).classList.add('hidden');
     });
+    // Restore saved length preference into the input
+    const lenInput = document.getElementById('sumLengthPct');
+    if (lenInput) lenInput.value = _summaryLengthPct;
     _onSummaryEngineChange();
     _loadCachedSummaries();
 }
@@ -3147,9 +3163,10 @@ function _renderSummaryResult(track, data) {
 
     textEl.classList.remove('loading');
     textEl.textContent = data.summary || '';
+    const wordCount  = data.summary ? data.summary.trim().split(/\s+/).length : 0;
     const cachedMark = data.cached ? ' · cache' : '';
     const seconds    = data.durationMs ? ` · ${(data.durationMs/1000).toFixed(1)}s` : '';
-    metaEl.textContent = `ⓘ ${data.engine} / ${data.model}${seconds}${cachedMark}`;
+    metaEl.textContent = `ⓘ ${data.engine} / ${data.model} · ${wordCount} mots${seconds}${cachedMark}`;
     // Loaded summary → hide GÉNÉRER, show only 🔄
     genBtn.classList.add('hidden');
     refBtn.classList.remove('hidden');
@@ -3177,23 +3194,36 @@ function generateSummary(track, refresh = false) {
 
     textEl.textContent = '';
     textEl.classList.add('loading');
-    metaEl.textContent = '';
+    metaEl.textContent = 'Connexion…';
     genBtn.disabled = true;
     refBtn.classList.add('hidden');
 
+    // Elapsed-time ticker — starts immediately, gives the user live feedback.
+    // The boolean guard prevents a callback already in the macrotask queue from
+    // overwriting the rendered result after stopTimer() has been called.
+    const t0 = Date.now();
+    let timerStopped = false;
+    let timerInterval = setInterval(() => {
+        if (timerStopped) return;
+        const secs = Math.round((Date.now() - t0) / 1000);
+        metaEl.textContent = `Génération en cours… ${secs}s`;
+    }, 1000);
+    const stopTimer = () => { timerStopped = true; clearInterval(timerInterval); };
+
     const params = new URLSearchParams({
-        videoId: _currentVideoId, lang, engine, refresh: refresh ? 'true' : 'false'
+        videoId: _currentVideoId, lang, engine,
+        lengthPct: _summaryLengthPct,
+        refresh: refresh ? 'true' : 'false'
     });
     const sse = new EventSource('/api/summary/stream?' + params);
     _summarySse[i] = sse;
     let handled = false;
 
-    sse.addEventListener('progress', e => {
-        // single "generating" step — already showing the spinner
-    });
+    sse.addEventListener('progress', () => { /* spinner already running */ });
 
     sse.addEventListener('complete', e => {
         handled = true;
+        stopTimer();
         _summarySse[i] = null;
         sse.close();
         const data = JSON.parse(e.data);
@@ -3202,21 +3232,24 @@ function generateSummary(track, refresh = false) {
 
     sse.addEventListener('apierror', e => {
         handled = true;
+        stopTimer();
         _summarySse[i] = null;
         sse.close();
         const data = JSON.parse(e.data);
         textEl.classList.remove('loading');
         textEl.textContent = '⚠ ' + (data.error || 'Erreur inconnue');
-        metaEl.textContent = '';
+        metaEl.textContent = `Échec après ${Math.round((Date.now() - t0) / 1000)}s`;
         genBtn.disabled = false;
     });
 
     sse.onerror = () => {
         if (handled) return;
+        stopTimer();
         _summarySse[i] = null;
         sse.close();
         textEl.classList.remove('loading');
-        textEl.textContent = '⚠ Connexion perdue';
+        textEl.textContent = '⚠ Connexion perdue. Réessayez.';
+        metaEl.textContent = '';
         genBtn.disabled = false;
     };
 }

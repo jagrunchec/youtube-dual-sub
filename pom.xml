@@ -79,6 +79,17 @@
     </dependencies>
 
     <build>
+        <!-- Exclude secrets files from the JAR — they are loaded at runtime from
+             the filesystem (./config/ or working directory) by Spring Boot.
+             This prevents secrets from leaking into committed/deployed artifacts. -->
+        <resources>
+            <resource>
+                <directory>src/main/resources</directory>
+                <excludes>
+                    <exclude>application-local.properties</exclude>
+                </excludes>
+            </resource>
+        </resources>
         <plugins>
             <plugin>
                 <groupId>org.springframework.boot</groupId>

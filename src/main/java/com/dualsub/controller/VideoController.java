@@ -341,8 +341,14 @@ public class VideoController {
                 List<SubtitleEntry> outSubs2 = subtitles2;
 
                 if (ollamaActive) {
-                    final boolean refine1 = !lang1Auto && !OLLAMA_UNSUPPORTED_TARGETS.contains(lang1);
-                    final boolean refine2 =              !OLLAMA_UNSUPPORTED_TARGETS.contains(lang2);
+                    // Skip refinement for tracks that were served from cache — they were
+                    // already Ollama-refined when first stored, so re-running Ollama is
+                    // useless and wastes 20–60 seconds on every cached playback.
+                    final boolean refine1 = !lang1Auto
+                        && !OLLAMA_UNSUPPORTED_TARGETS.contains(lang1)
+                        && translCached1.isEmpty();
+                    final boolean refine2 = !OLLAMA_UNSUPPORTED_TARGETS.contains(lang2)
+                        && translCached2.isEmpty();
                     if (refine1 || refine2) {
                         progress.accept("{\"step\":\"ollama_translation\"}");
                         try {
@@ -361,8 +367,9 @@ public class VideoController {
                             System.err.println("[Ollama] Translation refinement failed: " + e.getMessage());
                         }
                     } else {
-                        System.out.println("[Ollama] Both targets unsupported (" + lang1 + ", " + lang2
-                            + ") — skipping refinement entirely.");
+                        System.out.println("[Ollama] Refinement skipped — both tracks already cached or unsupported"
+                            + " (" + lang1 + " cached=" + translCached1.isPresent()
+                            + ", " + lang2 + " cached=" + translCached2.isPresent() + ")");
                     }
                 }
 

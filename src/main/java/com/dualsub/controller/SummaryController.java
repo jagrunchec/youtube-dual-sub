@@ -74,7 +74,11 @@ public class SummaryController {
             @RequestParam String videoId,
             @RequestParam String lang,
             @RequestParam String engine,
+            @RequestParam(defaultValue = "25") int lengthPct,
             @RequestParam(defaultValue = "false") boolean refresh) {
+
+        // Clamp to sensible bounds
+        final int pct = Math.max(5, Math.min(100, lengthPct));
 
         SseEmitter emitter = new SseEmitter(240_000L); // 4-minute timeout
 
@@ -95,7 +99,7 @@ public class SummaryController {
 
                 // ── Generate ──
                 emitter.send(SseEmitter.event().name("progress").data("{\"step\":\"generating\"}"));
-                VideoSummary saved = summaryService.generate(videoId, lang, engine);
+                VideoSummary saved = summaryService.generate(videoId, lang, engine, pct);
                 Map<String, Object> payload = buildPayload(saved, false);
                 emitter.send(SseEmitter.event().name("complete")
                     .data(objectMapper.writeValueAsString(payload)));

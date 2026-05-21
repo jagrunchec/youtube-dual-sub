@@ -115,7 +115,7 @@ public class SummaryService {
      * @return the persisted VideoSummary
      */
     @Transactional
-    public VideoSummary generate(String videoId, String lang, String engine) throws Exception {
+    public VideoSummary generate(String videoId, String lang, String engine, int lengthPct) throws Exception {
         // ── Validate inputs ──
         if (!LANG_NAMES_FR.containsKey(lang)) {
             throw new IllegalArgumentException("Langue non supportée pour le résumé : " + lang);
@@ -138,15 +138,21 @@ public class SummaryService {
         List<SubtitleEntry> entries = transcriptOpt.get().entries;
         String transcript = entriesToPlainText(entries);
 
+        // ── Compute target word count ──
+        int transcriptWords = countWords(transcript);
+        int targetWords     = Math.max(40, transcriptWords * lengthPct / 100);
+        System.out.println("[Summary] lengthPct=" + lengthPct + "% → transcript=" + transcriptWords
+            + " words → target=" + targetWords + " words");
+
         // ── Call the engine ──
         long t0 = System.currentTimeMillis();
         String summary;
         String modelUsed;
         if ("ollama".equals(engine)) {
-            summary  = summarizeWithOllama(transcript, lang);
+            summary  = summarizeWithOllama(transcript, lang, targetWords);
             modelUsed = ollamaModel;
         } else if ("gemini".equals(engine)) {
-            summary  = summarizeWithGemini(transcript, lang);
+            summary  = summarizeWithGemini(transcript, lang, targetWords);
             modelUsed = geminiModel;
         } else {
             throw new IllegalArgumentException("Moteur inconnu : " + engine);
@@ -173,7 +179,7 @@ public class SummaryService {
 
     // ── Engine implementations ────────────────────────────────────
 
-    private String summarizeWithOllama(String transcript, String lang) throws Exception {
+    private String summarizeWithOllama(String transcript, String lang, int targetWords) throws Exception {
         String langName = LANG_NAMES_FR.getOrDefault(lang, lang);
 
         // mistral-nemo is a chat-tuned model — use /api/chat with system + user messages
@@ -188,7 +194,7 @@ public class SummaryService {
 
         String userMsg =
             "Résume la vidéo ci-dessous en " + langName + ".\n"
-          + "Longueur : 4 à 6 phrases concises.\n"
+          + "Longueur cible : environ " + targetWords + " mots (± 20 %).\n"
           + "Contenu : sujet principal, points clés, conclusion.\n\n"
           + "TRANSCRIPT :\n"
           + transcript;
@@ -202,9 +208,11 @@ public class SummaryService {
         body.put("stream", false);
         // num_ctx = 16384 lets the full transcript fit for videos up to ~50 min.
         // Default Ollama context is 2048-4096 which silently truncates long transcripts.
+        // num_predict: allow ~2.5 tokens per target word, minimum 256, capped at 4096.
+        int numPredict = Math.min(4096, Math.max(256, (int)(targetWords * 2.5)));
         body.put("options", Map.of(
             "temperature", 0.3,
-            "num_predict", 700,
+            "num_predict", numPredict,
             "num_ctx",     16384
         ));
 
@@ -231,20 +239,26 @@ public class SummaryService {
         return content;
     }
 
-    private String summarizeWithGemini(String transcript, String lang) throws Exception {
-        String prompt = buildPrompt(transcript, lang);
+    private String summarizeWithGemini(String transcript, String lang, int targetWords) throws Exception {
+        String prompt = buildPrompt(transcript, lang, targetWords);
+
+        // maxOutputTokens: allow ~1.5 tokens per target word, minimum 256, capped at 8192.
+        int maxTokens = Math.min(8192, Math.max(256, (int)(targetWords * 1.5)));
 
         // Build {"contents":[{"parts":[{"text":"..."}]}]} payload
         Map<String, Object> payload = Map.of(
             "contents", List.of(Map.of("parts", List.of(Map.of("text", prompt)))),
             "generationConfig", Map.of(
                 "temperature",     0.3,
-                "maxOutputTokens", 800
+                "maxOutputTokens", maxTokens
             )
         );
 
         String url = "https://generativelanguage.googleapis.com/v1beta/models/"
                    + geminiModel + ":generateContent?key=" + geminiApiKey;
+
+        System.out.println("[Summary] Gemini call: transcript=" + transcript.length()
+            + " chars, lang=" + lang + ", model=" + geminiModel);
 
         HttpRequest req = HttpRequest.newBuilder()
             .uri(URI.create(url))
@@ -255,9 +269,23 @@ public class SummaryService {
 
         HttpResponse<String> resp = httpClient.send(req, HttpResponse.BodyHandlers.ofString());
         if (resp.statusCode() >= 400) {
-            // Don't leak the API key in error messages
+            // Log the full body so we can distinguish quota types
+            String rawBody = resp.body().substring(0, Math.min(600, resp.body().length()));
+            System.err.println("[Summary] Gemini error " + resp.statusCode() + " body: " + rawBody);
+            // Produce friendly messages for common quota / auth errors
+            if (resp.statusCode() == 429) {
+                throw new RuntimeException(
+                    "Quota Gemini dépassé (429). Vérifiez votre plan sur " +
+                    "https://aistudio.google.com — quota gratuit peut-être épuisé ou limité à 0.");
+            }
+            if (resp.statusCode() == 403 || resp.statusCode() == 401) {
+                throw new RuntimeException(
+                    "Clé Gemini invalide ou accès refusé (" + resp.statusCode() + "). " +
+                    "Vérifiez app.gemini.api-key dans application-local.properties.");
+            }
+            // Generic — don't leak the API key in error messages
             throw new RuntimeException("Gemini HTTP " + resp.statusCode() + ": "
-                + resp.body().substring(0, Math.min(400, resp.body().length())));
+                + resp.body().substring(0, Math.min(300, resp.body().length())));
         }
 
         // Response: { "candidates": [ { "content": { "parts": [ {"text": "..."} ] } } ] }
@@ -303,17 +331,23 @@ public class SummaryService {
         return head + "\n\n[…transcript abrégé pour le résumé…]\n\n" + tail;
     }
 
-    /** Builds the summarization prompt. Same structure for Ollama and Gemini. */
-    private String buildPrompt(String transcript, String lang) {
+    /** Builds the summarization prompt for Gemini. */
+    private String buildPrompt(String transcript, String lang, int targetWords) {
         String langName = LANG_NAMES_FR.getOrDefault(lang, lang);
         return  "Tu es un assistant qui résume des vidéos YouTube à partir de leur transcript.\n\n"
               + "Langue de réponse : " + langName + "\n"
-              + "Longueur : 4 à 6 phrases concises.\n"
+              + "Longueur cible : environ " + targetWords + " mots (± 20 %).\n"
               + "Contenu : sujet principal, points clés, conclusion.\n"
               + "Ton : neutre et factuel.\n\n"
               + "Réponds UNIQUEMENT avec le résumé, sans préambule, sans titre, sans formule de politesse.\n\n"
               + "Transcript :\n"
               + transcript;
+    }
+
+    /** Counts the approximate number of words in a text (split on whitespace). */
+    private int countWords(String text) {
+        if (text == null || text.isBlank()) return 0;
+        return text.trim().split("\\s+").length;
     }
 
     /** Quick availability check for Ollama (HEAD /api/tags). */

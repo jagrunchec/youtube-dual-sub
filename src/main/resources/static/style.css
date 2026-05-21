@@ -1099,6 +1099,47 @@ body.theme-light .wp-pill:hover:not(:has(input:checked)) { border-color: rgba(0,
 }
 @media (max-width: 720px) { .summary-body { grid-template-columns: 1fr; } }
 
+/* ── Summary length control ─────────────────────────────────── */
+.sum-length-row {
+    grid-column: 1 / -1;
+    display: flex; align-items: center; gap: .5rem;
+    padding: .3rem .1rem .55rem;
+    border-bottom: 1px solid rgba(255,255,255,.06);
+    margin-bottom: .15rem;
+}
+.sum-length-label {
+    font-family: 'Exo 2', sans-serif; font-size: .68rem;
+    color: rgba(255,255,255,.45); letter-spacing: .05em; text-transform: uppercase;
+    user-select: none;
+}
+.sum-length-input {
+    width: 54px;
+    background: rgba(255,255,255,.07);
+    border: 1px solid rgba(255,255,255,.14);
+    border-radius: 4px;
+    color: #d8e8ff;
+    font-family: 'Exo 2', sans-serif; font-size: .8rem;
+    padding: .15rem .4rem;
+    text-align: center;
+    outline: none;
+    -moz-appearance: textfield;
+    transition: border-color .15s;
+}
+.sum-length-input::-webkit-outer-spin-button,
+.sum-length-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.sum-length-input:focus { border-color: rgba(0,212,255,.55); }
+.sum-length-unit {
+    font-family: 'Exo 2', sans-serif; font-size: .68rem;
+    color: rgba(255,255,255,.38);
+}
+body.theme-light .sum-length-label { color: rgba(0,0,0,.5); }
+body.theme-light .sum-length-unit  { color: rgba(0,0,0,.38); }
+body.theme-light .sum-length-input {
+    background: rgba(0,0,0,.04); border-color: rgba(0,0,0,.14);
+    color: #1a2a3a;
+}
+body.theme-light .sum-length-input:focus { border-color: rgba(0,102,204,.5); }
+
 .summary-card {
     background: rgba(255,255,255,.02);
     border: 1px solid rgba(255,255,255,.08);

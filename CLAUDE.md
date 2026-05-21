@@ -10,6 +10,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 | `deploy` | `.claude/skills/deploy/SKILL.md` | Déployer sur WSL2 : pull → build → restart → verify |
 | `status` | `.claude/skills/status/SKILL.md` | Vérifier l'état des services systemd et du tunnel Cloudflare |
 | `spring` | `.claude/skills/spring/SKILL.md` | Ajouter/modifier du code Spring Boot (entité, endpoint, migration) |
+| `logs` | `.claude/skills/logs/SKILL.md` | Lire et analyser les logs journald du service DualSub — à utiliser dès qu'un bug ou comportement inattendu est signalé |
 
 ## What this project does
 

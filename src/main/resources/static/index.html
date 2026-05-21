@@ -242,7 +242,7 @@
                         <button class="flag-btn" data-code="nl" onclick="pick(2,'nl',this)"><span class="flag-icon">🇳🇱</span><span class="flag-code">NL</span><span class="flag-name">Nederlands</span></button>
                         <button class="flag-btn" data-code="ru" onclick="pick(2,'ru',this)"><span class="flag-icon">🇷🇺</span><span class="flag-code">RU</span><span class="flag-name">Русский</span></button>
                         <button class="flag-btn" data-code="hi" onclick="pick(2,'hi',this)"><span class="flag-icon">🇮🇳</span><span class="flag-code">HI</span><span class="flag-name">हिन्दी</span></button>
-                        <button class="flag-btn" data-code="ar" onclick="pick(2,'ar',this)"><span class="flag-icon">🇸🇦</span><span class="flag-code">AR</span><span class="flag-name">العربية</span></button>
+                        <button class="flag-btn" data-code="ar" onclick="pick(2,'ar',this)"><span class="flag-icon">🇪🇬</span><span class="flag-code">AR</span><span class="flag-name">العربية</span></button>
                     </div>
                 </div>
             </div>
@@ -382,6 +382,14 @@
                     <span class="summary-engine-row" id="summaryEngineRow"></span>
                 </div>
                 <div class="summary-body hidden" id="summaryBody">
+                    <div class="sum-length-row">
+                        <label class="sum-length-label" for="sumLengthPct">Longueur</label>
+                        <input type="number" id="sumLengthPct" class="sum-length-input"
+                               min="5" max="100" value="25"
+                               onchange="_onSummaryLengthChange()"
+                               title="Pourcentage du nombre de mots du transcript à conserver dans le résumé">
+                        <span class="sum-length-unit">% du transcript</span>
+                    </div>
                     <div class="summary-card green-card">
                         <div class="summary-card-head">
                             <span class="hud-badge green-badge" id="sumLang1Badge">FR</span>
@@ -701,6 +709,6 @@
 </div>
 
 <script src="https://www.youtube.com/iframe_api"></script>
-<script src="app.js?v=51"></script>
+<script src="app.js?v=53"></script>
 </body>
 </html>
